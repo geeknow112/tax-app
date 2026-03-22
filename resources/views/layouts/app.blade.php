@@ -17,6 +17,7 @@
             <a href="{{ route('expenses.index') }}" class="text-lg font-bold">確定申告サポート</a>
             <div class="flex gap-4">
                 <a href="{{ route('expenses.index') }}" class="hover:underline">仕訳</a>
+                <a href="{{ route('pl.index') }}" class="hover:underline">P/L</a>
                 <a href="{{ route('import.show') }}" class="hover:underline">インポート</a>
             </div>
         </div>
