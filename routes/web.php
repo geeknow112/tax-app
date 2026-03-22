@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\ProfitLossController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -10,3 +11,5 @@ Route::get('/expenses/search-prev', [ExpenseController::class, 'searchPrevYear']
 
 Route::get('/import', [ImportController::class, 'show'])->name('import.show');
 Route::post('/import', [ImportController::class, 'store'])->name('import.store');
+
+Route::get('/pl', [ProfitLossController::class, 'index'])->name('pl.index');
