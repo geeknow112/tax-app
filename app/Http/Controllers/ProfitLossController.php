@@ -16,32 +16,50 @@ class ProfitLossController extends Controller
         $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
         $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
 
-        // 科目別集計
-        $expensesByCategory = Expense::where('fiscal_year_id', $fiscalYear->id)
+        // 科目×支払方法別集計
+        $expensesByCategoryAndMethod = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->whereNotNull('account_category_id')
-            ->select('account_category_id', DB::raw('SUM(amount) as total'))
-            ->groupBy('account_category_id')
-            ->pluck('total', 'account_category_id');
+            ->select('account_category_id', 'payment_method', DB::raw('SUM(amount) as total'))
+            ->groupBy('account_category_id', 'payment_method')
+            ->get();
+
+        // 集計マップ構築
+        $categoryMethodMap = [];
+        foreach ($expensesByCategoryAndMethod as $row) {
+            $categoryMethodMap[$row->account_category_id][$row->payment_method] = $row->total;
+        }
 
         // 未仕訳の合計
         $unclassifiedTotal = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->whereNull('account_category_id')
             ->sum('amount');
 
-        // 全科目を取得（0円の科目も表示するため）
+        // 全科目を取得
         $categories = AccountCategory::orderBy('sort_order')->get();
 
         // P/Lデータ構築
         $plItems = [];
         $expenseTotal = 0;
+        $totalByMethod = ['credit_card' => 0, 'cash' => 0, 'paypay' => 0];
 
         foreach ($categories as $cat) {
-            $amount = $expensesByCategory[$cat->id] ?? 0;
+            $methods = $categoryMethodMap[$cat->id] ?? [];
+            $creditCard = $methods['credit_card'] ?? 0;
+            $cash = $methods['cash'] ?? 0;
+            $paypay = $methods['paypay'] ?? 0;
+            $amount = $creditCard + $cash + $paypay;
+
             $plItems[] = [
                 'name' => $cat->name,
                 'amount' => $amount,
+                'credit_card' => $creditCard,
+                'cash' => $cash,
+                'paypay' => $paypay,
             ];
             $expenseTotal += $amount;
+            $totalByMethod['credit_card'] += $creditCard;
+            $totalByMethod['cash'] += $cash;
+            $totalByMethod['paypay'] += $paypay;
         }
 
         // 月別集計
@@ -55,7 +73,6 @@ class ProfitLossController extends Controller
             ->pluck('total', 'month')
             ->toArray();
 
-        // 12ヶ月分を埋める
         $monthly = [];
         for ($m = 1; $m <= 12; $m++) {
             $monthly[$m] = $monthlyTotals[$m] ?? 0;
@@ -68,7 +85,8 @@ class ProfitLossController extends Controller
 
         return view('pl.index', compact(
             'currentYear', 'years', 'plItems', 'expenseTotal',
-            'unclassifiedTotal', 'monthly', 'totalCount', 'classifiedCount'
+            'unclassifiedTotal', 'monthly', 'totalCount', 'classifiedCount',
+            'totalByMethod'
         ));
     }
 }
