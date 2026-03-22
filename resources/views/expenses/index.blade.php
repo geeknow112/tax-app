@@ -21,6 +21,15 @@
                     <option value="classified" {{ $filter === 'classified' ? 'selected' : '' }}>仕訳済み</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm text-gray-600">支払方法</label>
+                <select name="payment_method" class="border rounded px-3 py-2" onchange="this.form.submit()">
+                    <option value="all" {{ $paymentMethod === 'all' ? 'selected' : '' }}>すべて</option>
+                    <option value="credit_card" {{ $paymentMethod === 'credit_card' ? 'selected' : '' }}>クレカ</option>
+                    <option value="cash" {{ $paymentMethod === 'cash' ? 'selected' : '' }}>現金</option>
+                    <option value="paypay" {{ $paymentMethod === 'paypay' ? 'selected' : '' }}>PayPay</option>
+                </select>
+            </div>
             <div class="flex-1">
                 <label class="block text-sm text-gray-600">利用場所で検索</label>
                 <input type="text" name="search" value="{{ $search }}" placeholder="利用場所を入力..."

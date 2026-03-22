@@ -79,8 +79,47 @@
             </div>
         </div>
 
-        {{-- 右: 月別推移 --}}
-        <div>
+        {{-- 右: 支払方法別 + 月別推移 --}}
+        <div class="space-y-6">
+            {{-- 支払方法別内訳 --}}
+            <div class="bg-white rounded shadow overflow-hidden">
+                <div class="bg-green-600 text-white px-4 py-3">
+                    <h2 class="font-bold">支払方法別内訳</h2>
+                </div>
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left px-4 py-2 text-sm text-gray-600">支払方法</th>
+                            <th class="text-right px-4 py-2 text-sm text-gray-600">件数</th>
+                            <th class="text-right px-4 py-2 text-sm text-gray-600">金額</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($paymentSummary as $key => $pm)
+                            @if($pm['count'] > 0)
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-4 py-2">
+                                    <span class="inline-block px-2 py-0.5 rounded text-xs
+                                        {{ $key === 'credit_card' ? 'bg-blue-100 text-blue-700' : ($key === 'paypay' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }}">
+                                        {{ $pm['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-right text-sm">{{ number_format($pm['count']) }}件</td>
+                                <td class="px-4 py-2 text-right font-mono">¥{{ number_format($pm['total']) }}</td>
+                            </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                    <tfoot class="bg-gray-100 font-bold">
+                        <tr class="border-t-2">
+                            <td class="px-4 py-2">合計</td>
+                            <td class="px-4 py-2 text-right text-sm">{{ number_format(collect($paymentSummary)->sum('count')) }}件</td>
+                            <td class="px-4 py-2 text-right font-mono">¥{{ number_format(collect($paymentSummary)->sum('total')) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
             <div class="bg-white rounded shadow overflow-hidden">
                 <div class="bg-indigo-600 text-white px-4 py-3">
                     <h2 class="font-bold">月別経費推移</h2>

@@ -17,6 +17,7 @@ class ExpenseController extends Controller
         $currentYear = $request->input('year', date('Y'));
         $filter = $request->input('filter', 'all'); // all, unclassified, classified
         $search = $request->input('search', '');
+        $paymentMethod = $request->input('payment_method', 'all'); // all, credit_card, cash, paypay
 
         $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
         $prevYear = FiscalYear::where('year', $currentYear - 1)->first();
@@ -29,6 +30,10 @@ class ExpenseController extends Controller
             $query->whereNull('account_category_id');
         } elseif ($filter === 'classified') {
             $query->whereNotNull('account_category_id');
+        }
+
+        if ($paymentMethod !== 'all') {
+            $query->where('payment_method', $paymentMethod);
         }
 
         if ($search) {
@@ -59,7 +64,7 @@ class ExpenseController extends Controller
 
         return view('expenses.index', compact(
             'expenses', 'prevExpenses', 'categories', 'years',
-            'currentYear', 'filter', 'search',
+            'currentYear', 'filter', 'search', 'paymentMethod',
             'totalCount', 'classifiedCount'
         ));
     }
