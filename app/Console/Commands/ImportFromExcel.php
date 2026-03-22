@@ -56,7 +56,7 @@ class ImportFromExcel extends Command
 
             if ($type === 'credit_card') {
                 $vendorName = trim($row[2] ?? '');
-                $amount = abs(intval($row[4] ?? 0));
+                $amount = abs(intval(str_replace(',', '', $row[4] ?? '0')));
                 $categoryName = trim($row[8] ?? ''); // I列
                 $memo = trim($row[7] ?? '');          // H列
                 $description = $row[3] ?? null;
@@ -67,7 +67,7 @@ class ImportFromExcel extends Command
                 if (empty($vendorName)) {
                     $vendorName = trim($row[3] ?? '');
                 }
-                $amount = abs(intval($row[4] ?? 0));
+                $amount = abs(intval(str_replace(',', '', $row[4] ?? '0')));
                 $categoryName = trim($row[8] ?? ''); // I列
                 $memo = trim($row[7] ?? '');
                 $description = $row[3] ?? null;

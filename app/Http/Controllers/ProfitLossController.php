@@ -16,12 +16,18 @@ class ProfitLossController extends Controller
         $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
         $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
 
-        // 科目別集計
-        $expensesByCategory = Expense::where('fiscal_year_id', $fiscalYear->id)
+        // 科目×支払方法別集計
+        $expensesByCategoryAndMethod = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->whereNotNull('account_category_id')
-            ->select('account_category_id', DB::raw('SUM(amount) as total'))
-            ->groupBy('account_category_id')
-            ->pluck('total', 'account_category_id');
+            ->select('account_category_id', 'payment_method', DB::raw('SUM(amount) as total'))
+            ->groupBy('account_category_id', 'payment_method')
+            ->get();
+
+        // 集計マップ構築
+        $categoryMethodMap = [];
+        foreach ($expensesByCategoryAndMethod as $row) {
+            $categoryMethodMap[$row->account_category_id][$row->payment_method] = $row->total;
+        }
 
         // 未仕訳の合計
         $unclassifiedTotal = Expense::where('fiscal_year_id', $fiscalYear->id)
@@ -34,14 +40,26 @@ class ProfitLossController extends Controller
         // P/Lデータ構築
         $plItems = [];
         $expenseTotal = 0;
+        $totalByMethod = ['credit_card' => 0, 'cash' => 0, 'paypay' => 0];
 
         foreach ($categories as $cat) {
-            $amount = $expensesByCategory[$cat->id] ?? 0;
+            $methods = $categoryMethodMap[$cat->id] ?? [];
+            $creditCard = $methods['credit_card'] ?? 0;
+            $cash = $methods['cash'] ?? 0;
+            $paypay = $methods['paypay'] ?? 0;
+            $amount = $creditCard + $cash + $paypay;
+
             $plItems[] = [
                 'name' => $cat->name,
                 'amount' => $amount,
+                'credit_card' => $creditCard,
+                'cash' => $cash,
+                'paypay' => $paypay,
             ];
             $expenseTotal += $amount;
+            $totalByMethod['credit_card'] += $creditCard;
+            $totalByMethod['cash'] += $cash;
+            $totalByMethod['paypay'] += $paypay;
         }
 
         // 月別集計
@@ -60,20 +78,6 @@ class ProfitLossController extends Controller
             $monthly[$m] = $monthlyTotals[$m] ?? 0;
         }
 
-        // 支払方法別集計
-        $paymentMethodTotals = Expense::where('fiscal_year_id', $fiscalYear->id)
-            ->whereNotNull('account_category_id')
-            ->select('payment_method', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
-            ->groupBy('payment_method')
-            ->get()
-            ->keyBy('payment_method');
-
-        $paymentSummary = [
-            'credit_card' => ['label' => 'クレジットカード', 'total' => $paymentMethodTotals->get('credit_card')?->total ?? 0, 'count' => $paymentMethodTotals->get('credit_card')?->count ?? 0],
-            'cash' => ['label' => '現金', 'total' => $paymentMethodTotals->get('cash')?->total ?? 0, 'count' => $paymentMethodTotals->get('cash')?->count ?? 0],
-            'paypay' => ['label' => 'PayPay', 'total' => $paymentMethodTotals->get('paypay')?->total ?? 0, 'count' => $paymentMethodTotals->get('paypay')?->count ?? 0],
-        ];
-
         // 仕訳状況
         $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)->count();
         $classifiedCount = Expense::where('fiscal_year_id', $fiscalYear->id)
@@ -82,7 +86,7 @@ class ProfitLossController extends Controller
         return view('pl.index', compact(
             'currentYear', 'years', 'plItems', 'expenseTotal',
             'unclassifiedTotal', 'monthly', 'totalCount', 'classifiedCount',
-            'paymentSummary'
+            'totalByMethod'
         ));
     }
 }
