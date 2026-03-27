@@ -20,6 +20,7 @@
                 <a href="{{ route('revenues.index') }}" class="hover:underline {{ request()->routeIs('revenues.*') ? 'font-bold underline' : '' }}">売上</a>
                 <a href="{{ route('depreciations.index') }}" class="hover:underline {{ request()->routeIs('depreciations.*') ? 'font-bold underline' : '' }}">減価償却</a>
                 <a href="{{ route('pl.index') }}" class="hover:underline {{ request()->routeIs('pl.*') ? 'font-bold underline' : '' }}">P/L</a>
+                <a href="{{ route('bs.index') }}" class="hover:underline {{ request()->routeIs('bs.*') ? 'font-bold underline' : '' }}">B/S</a>
                 <a href="{{ route('import.show') }}" class="hover:underline {{ request()->routeIs('import.*') ? 'font-bold underline' : '' }}">インポート</a>
             </div>
         </div>

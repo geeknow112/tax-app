@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\DepreciationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ImportController;
@@ -16,6 +17,7 @@ Route::get('/import', [ImportController::class, 'show'])->name('import.show');
 Route::post('/import', [ImportController::class, 'store'])->name('import.store');
 
 Route::get('/pl', [ProfitLossController::class, 'index'])->name('pl.index');
+Route::get('/bs', [BalanceSheetController::class, 'index'])->name('bs.index');
 
 Route::get('/revenues', [RevenueController::class, 'index'])->name('revenues.index');
 Route::post('/revenues', [RevenueController::class, 'store'])->name('revenues.store');
