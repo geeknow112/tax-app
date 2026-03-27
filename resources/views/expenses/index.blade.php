@@ -51,15 +51,42 @@
         </div>
     </div>
 
+    {{-- 一括適用バー（選択時に表示） --}}
+    <div x-show="selectedIds.length > 0" x-cloak
+        class="bg-indigo-600 text-white rounded shadow p-3 flex items-center gap-4 sticky top-0 z-10">
+        <span class="text-sm" x-text="selectedIds.length + '件選択中'"></span>
+        <select x-model="bulkCategoryId" class="border rounded px-3 py-1 text-sm text-gray-800">
+            <option value="">-- 科目を選択 --</option>
+            @foreach($categories as $cat)
+                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+            @endforeach
+        </select>
+        <button @click="bulkClassify()" class="bg-white text-indigo-700 px-4 py-1 rounded text-sm font-bold hover:bg-indigo-100">
+            一括適用
+        </button>
+        <button @click="selectedIds = []" class="text-indigo-200 hover:text-white text-sm ml-auto">選択解除</button>
+    </div>
+
     {{-- メインエリア: 左=今年 / 右=去年参照 --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {{-- 左: 今年の明細 --}}
         <div class="lg:col-span-2 space-y-2">
-            <h2 class="text-lg font-bold text-gray-700">{{ $currentYear }}年 経費明細</h2>
+            <div class="flex items-center gap-3">
+                <h2 class="text-lg font-bold text-gray-700">{{ $currentYear }}年 経費明細</h2>
+                <label class="text-sm text-gray-500 flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" @change="toggleAll($event.target.checked)" class="rounded">
+                    全選択
+                </label>
+            </div>
             @forelse($expenses as $expense)
             <div class="bg-white rounded shadow p-3 flex items-center gap-3 hover:bg-gray-50 transition
                 {{ $expense->isClassified() ? 'border-l-4 border-green-400' : 'border-l-4 border-orange-400' }}"
+                :class="selectedIds.includes({{ $expense->id }}) ? 'ring-2 ring-indigo-400' : ''"
                 id="expense-{{ $expense->id }}">
+                <input type="checkbox" value="{{ $expense->id }}"
+                    :checked="selectedIds.includes({{ $expense->id }})"
+                    @change="toggleSelect({{ $expense->id }})"
+                    class="rounded">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-gray-500">{{ $expense->date->format('m/d') }}</span>
@@ -77,7 +104,7 @@
                 <div class="text-right font-mono font-bold whitespace-nowrap">
                     ¥{{ number_format($expense->amount) }}
                 </div>
-                <div class="w-48">
+                <div class="w-44">
                     <select class="border rounded px-2 py-1 w-full text-sm"
                         @change="classify({{ $expense->id }}, $event.target.value)">
                         <option value="">-- 未仕訳 --</option>
@@ -123,7 +150,6 @@
                 </template>
             </div>
 
-            {{-- 去年のデータ（初期表示用） --}}
             @if($prevExpenses->isNotEmpty())
             <div class="bg-white rounded shadow p-3 max-h-96 overflow-y-auto">
                 <h3 class="text-sm font-bold text-gray-600 mb-2">去年の仕訳済み（{{ $search ?: '全件' }}）</h3>
@@ -151,6 +177,23 @@ function expenseApp() {
         prevSearchQuery: '',
         prevResults: [],
         prevLoading: false,
+        selectedIds: [],
+        bulkCategoryId: '',
+
+        toggleSelect(id) {
+            const idx = this.selectedIds.indexOf(id);
+            if (idx === -1) { this.selectedIds.push(id); }
+            else { this.selectedIds.splice(idx, 1); }
+        },
+
+        toggleAll(checked) {
+            if (checked) {
+                this.selectedIds = [...document.querySelectorAll('input[type="checkbox"][value]')]
+                    .map(el => parseInt(el.value)).filter(v => !isNaN(v));
+            } else {
+                this.selectedIds = [];
+            }
+        },
 
         async classify(expenseId, categoryId) {
             const res = await fetch(`/expenses/${expenseId}/classify`, {
@@ -182,6 +225,31 @@ function expenseApp() {
             const res = await fetch(`/expenses/search-prev?vendor_name=${encodeURIComponent(query)}&year=${year}`);
             this.prevResults = await res.json();
             this.prevLoading = false;
+        },
+
+        async bulkClassify() {
+            if (!this.bulkCategoryId) {
+                alert('科目を選択してください');
+                return;
+            }
+            if (this.selectedIds.length === 0) return;
+
+            const res = await fetch('/expenses/bulk-classify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    expense_ids: this.selectedIds,
+                    account_category_id: this.bulkCategoryId,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`${data.updated_count}件を「${data.category_name}」に一括適用しました`);
+                location.reload();
+            }
         },
     };
 }
