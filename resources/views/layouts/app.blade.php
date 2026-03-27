@@ -16,9 +16,11 @@
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ route('expenses.index') }}" class="text-lg font-bold">確定申告サポート</a>
             <div class="flex gap-4">
-                <a href="{{ route('expenses.index') }}" class="hover:underline">仕訳</a>
-                <a href="{{ route('pl.index') }}" class="hover:underline">P/L</a>
-                <a href="{{ route('import.show') }}" class="hover:underline">インポート</a>
+                <a href="{{ route('expenses.index') }}" class="hover:underline {{ request()->routeIs('expenses.*') ? 'font-bold underline' : '' }}">仕訳</a>
+                <a href="{{ route('revenues.index') }}" class="hover:underline {{ request()->routeIs('revenues.*') ? 'font-bold underline' : '' }}">売上</a>
+                <a href="{{ route('depreciations.index') }}" class="hover:underline {{ request()->routeIs('depreciations.*') ? 'font-bold underline' : '' }}">減価償却</a>
+                <a href="{{ route('pl.index') }}" class="hover:underline {{ request()->routeIs('pl.*') ? 'font-bold underline' : '' }}">P/L</a>
+                <a href="{{ route('import.show') }}" class="hover:underline {{ request()->routeIs('import.*') ? 'font-bold underline' : '' }}">インポート</a>
             </div>
         </div>
     </nav>
