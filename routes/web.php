@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountCategoryController;
 use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\DepreciationController;
 use App\Http\Controllers\ExpenseController;
@@ -26,3 +27,9 @@ Route::delete('/revenues/{revenue}', [RevenueController::class, 'destroy'])->nam
 Route::get('/depreciations', [DepreciationController::class, 'index'])->name('depreciations.index');
 Route::post('/depreciations', [DepreciationController::class, 'store'])->name('depreciations.store');
 Route::delete('/depreciations/{depreciation}', [DepreciationController::class, 'destroy'])->name('depreciations.destroy');
+
+Route::get('/categories', [AccountCategoryController::class, 'index'])->name('categories.index');
+Route::post('/categories', [AccountCategoryController::class, 'store'])->name('categories.store');
+Route::put('/categories/{category}', [AccountCategoryController::class, 'update'])->name('categories.update');
+Route::delete('/categories/{category}', [AccountCategoryController::class, 'destroy'])->name('categories.destroy');
+Route::post('/categories/reorder', [AccountCategoryController::class, 'reorder'])->name('categories.reorder');
