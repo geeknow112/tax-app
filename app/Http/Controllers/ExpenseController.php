@@ -111,4 +111,27 @@ class ExpenseController extends Controller
 
         return response()->json($results);
     }
+
+    /**
+     * チェックした明細に一括で科目を適用（AJAX）
+     */
+    public function bulkClassify(Request $request)
+    {
+        $request->validate([
+            'expense_ids' => 'required|array|min:1',
+            'expense_ids.*' => 'exists:expenses,id',
+            'account_category_id' => 'required|exists:account_categories,id',
+        ]);
+
+        $updated = Expense::whereIn('id', $request->expense_ids)
+            ->update(['account_category_id' => $request->account_category_id]);
+
+        $categoryName = AccountCategory::find($request->account_category_id)?->name;
+
+        return response()->json([
+            'success' => true,
+            'updated_count' => $updated,
+            'category_name' => $categoryName,
+        ]);
+    }
 }
