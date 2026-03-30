@@ -70,6 +70,38 @@ class ExpenseController extends Controller
     }
 
     /**
+     * 経費を新規追加（AJAX）
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'vendor_name' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:1',
+            'payment_method' => 'required|in:credit_card,cash,paypay',
+            'account_category_id' => 'nullable|exists:account_categories,id',
+            'year' => 'required|integer',
+        ]);
+
+        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->year]);
+
+        $expense = Expense::create([
+            'fiscal_year_id' => $fiscalYear->id,
+            'date' => $request->date,
+            'vendor_name' => $request->vendor_name,
+            'amount' => $request->amount,
+            'payment_method' => $request->payment_method,
+            'account_category_id' => $request->account_category_id ?: null,
+            'memo' => '',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'expense' => $expense->load('accountCategory'),
+        ]);
+    }
+
+    /**
      * 仕訳を更新（AJAX）
      */
     public function classify(Request $request, Expense $expense)
@@ -110,6 +142,18 @@ class ExpenseController extends Controller
             ->get();
 
         return response()->json($results);
+    }
+
+    /**
+     * 経費を削除（AJAX）
+     */
+    public function destroy(Expense $expense)
+    {
+        $expense->delete();
+
+        return response()->json([
+            'success' => true,
+        ]);
     }
 
     /**
