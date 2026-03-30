@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountCategoryController;
 use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\DepreciationController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ProfitLossController;
@@ -35,3 +36,14 @@ Route::post('/categories', [AccountCategoryController::class, 'store'])->name('c
 Route::put('/categories/{category}', [AccountCategoryController::class, 'update'])->name('categories.update');
 Route::delete('/categories/{category}', [AccountCategoryController::class, 'destroy'])->name('categories.destroy');
 Route::post('/categories/reorder', [AccountCategoryController::class, 'reorder'])->name('categories.reorder');
+
+
+Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
+Route::get('/documents/create', [DocumentController::class, 'create'])->name('documents.create');
+Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
+Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
+Route::put('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+Route::post('/documents/{document}/items', [DocumentController::class, 'addItem'])->name('documents.addItem');
+Route::delete('/documents/{document}/items/{item}', [DocumentController::class, 'removeItem'])->name('documents.removeItem');
+Route::post('/documents/{document}/status', [DocumentController::class, 'updateStatus'])->name('documents.updateStatus');

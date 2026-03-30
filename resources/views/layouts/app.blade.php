@@ -56,6 +56,10 @@
                     <span class="text-lg">🏢</span>
                     <span>減価償却</span>
                 </a>
+                <a href="{{ route('documents.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-freee-hover transition {{ request()->routeIs('documents.*') ? 'bg-freee-active text-white font-semibold' : '' }}">
+                    <span class="text-lg">📄</span>
+                    <span>書類</span>
+                </a>
 
                 <div class="border-t border-gray-600 my-3"></div>
                 <p class="px-3 py-1 text-xs text-gray-500 uppercase tracking-wider">レポート</p>
