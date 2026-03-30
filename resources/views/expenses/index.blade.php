@@ -78,6 +78,54 @@
                     全選択
                 </label>
             </div>
+
+            {{-- freee風インライン入力行 --}}
+            <div class="bg-indigo-50 rounded shadow p-3 border-2 border-dashed border-indigo-300">
+                <form @submit.prevent="addExpense()" class="flex items-center gap-2">
+                    <div class="w-28">
+                        <input type="date" x-model="newExpense.date" required
+                            class="border rounded px-2 py-1.5 w-full text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                            :max="'{{ $currentYear }}-12-31'" :min="'{{ $currentYear }}-01-01'">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <input type="text" x-model="newExpense.vendor_name" required
+                            placeholder="利用場所（例：Amazon）"
+                            @keydown.tab="$event.shiftKey || $refs.amountInput.focus()"
+                            class="border rounded px-2 py-1.5 w-full text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                    </div>
+                    <div class="w-28">
+                        <input type="number" x-model="newExpense.amount" required x-ref="amountInput"
+                            placeholder="金額" min="1"
+                            class="border rounded px-2 py-1.5 w-full text-sm text-right font-mono focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                    </div>
+                    <div class="w-24">
+                        <select x-model="newExpense.payment_method"
+                            class="border rounded px-2 py-1.5 w-full text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                            <option value="credit_card">クレカ</option>
+                            <option value="cash">現金</option>
+                            <option value="paypay">PayPay</option>
+                        </select>
+                    </div>
+                    <div class="w-36">
+                        <select x-model="newExpense.account_category_id"
+                            class="border rounded px-2 py-1.5 w-full text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                            <option value="">-- 科目 --</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" :disabled="addingExpense"
+                        class="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap">
+                        <span x-show="!addingExpense">+ 追加</span>
+                        <span x-show="addingExpense">...</span>
+                    </button>
+                </form>
+                <div class="text-xs text-gray-500 mt-1">
+                    💡 Tabキーで次の項目へ、Enterで追加
+                </div>
+            </div>
+
             @forelse($expenses as $expense)
             <div class="bg-white rounded shadow p-3 flex items-center gap-3 hover:bg-gray-50 transition
                 {{ $expense->isClassified() ? 'border-l-4 border-green-400' : 'border-l-4 border-orange-400' }}"
@@ -179,6 +227,52 @@ function expenseApp() {
         prevLoading: false,
         selectedIds: [],
         bulkCategoryId: '',
+        addingExpense: false,
+        newExpense: {
+            date: new Date().toISOString().split('T')[0],
+            vendor_name: '',
+            amount: '',
+            payment_method: 'credit_card',
+            account_category_id: '',
+        },
+
+        async addExpense() {
+            if (!this.newExpense.date || !this.newExpense.vendor_name || !this.newExpense.amount) {
+                alert('日付、利用場所、金額は必須です');
+                return;
+            }
+            this.addingExpense = true;
+            try {
+                const res = await fetch('/expenses', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        ...this.newExpense,
+                        year: new URLSearchParams(window.location.search).get('year') || new Date().getFullYear(),
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // リセットして再読み込み
+                    this.newExpense = {
+                        date: new Date().toISOString().split('T')[0],
+                        vendor_name: '',
+                        amount: '',
+                        payment_method: 'credit_card',
+                        account_category_id: '',
+                    };
+                    location.reload();
+                } else {
+                    alert(data.message || '追加に失敗しました');
+                }
+            } catch (e) {
+                alert('エラーが発生しました');
+            }
+            this.addingExpense = false;
+        },
 
         toggleSelect(id) {
             const idx = this.selectedIds.indexOf(id);
