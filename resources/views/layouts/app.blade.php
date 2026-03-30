@@ -21,7 +21,6 @@
                 <a href="{{ route('depreciations.index') }}" class="hover:underline {{ request()->routeIs('depreciations.*') ? 'font-bold underline' : '' }}">減価償却</a>
                 <a href="{{ route('pl.index') }}" class="hover:underline {{ request()->routeIs('pl.*') ? 'font-bold underline' : '' }}">P/L</a>
                 <a href="{{ route('bs.index') }}" class="hover:underline {{ request()->routeIs('bs.*') ? 'font-bold underline' : '' }}">B/S</a>
-                <a href="{{ route('etax.index') }}" class="hover:underline {{ request()->routeIs('etax.*') ? 'font-bold underline' : '' }}">e-Tax転記</a>
                 <a href="{{ route('import.show') }}" class="hover:underline {{ request()->routeIs('import.*') ? 'font-bold underline' : '' }}">インポート</a>
                 <a href="{{ route('categories.index') }}" class="hover:underline {{ request()->routeIs('categories.*') ? 'font-bold underline' : '' }}">科目管理</a>
             </div>
@@ -35,5 +34,16 @@
         @endif
         @yield('content')
     </main>
+    <div id="copy-toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg hidden text-sm">
+        コピーしました
+    </div>
+    <script>
+    function copyVal(value) {
+        navigator.clipboard.writeText(value);
+        const t = document.getElementById('copy-toast');
+        t.classList.remove('hidden');
+        setTimeout(() => t.classList.add('hidden'), 1000);
+    }
+    </script>
 </body>
 </html>
