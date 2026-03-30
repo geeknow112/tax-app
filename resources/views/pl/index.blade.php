@@ -109,7 +109,7 @@
                                     {{ $item['paypay'] > 0 ? '¥' . number_format($item['paypay']) : '-' }}
                                 </td>
                                 @endif
-                                <td class="px-4 py-2 text-right font-mono font-bold">¥{{ number_format($item['amount']) }}</td>
+                                <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $item['amount'] }}')" class="font-mono font-bold hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($item['amount']) }}</button></td>
                             </tr>
                             @endif
                         @endforeach
@@ -149,35 +149,31 @@
                     <tbody>
                         <tr class="border-t">
                             <td class="px-4 py-2 text-gray-600">売上高</td>
-                            <td class="px-4 py-2 text-right font-mono text-green-700">¥{{ number_format($revenueTotal) }}</td>
+                            <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $revenueTotal }}')" class="font-mono text-green-700 hover:bg-green-50 px-2 py-1 rounded cursor-pointer">¥{{ number_format($revenueTotal) }}</button></td>
                         </tr>
                         <tr class="border-t">
                             <td class="px-4 py-2 text-gray-600">経費合計</td>
-                            <td class="px-4 py-2 text-right font-mono text-red-700">- ¥{{ number_format($expenseTotal) }}</td>
+                            <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $expenseTotal }}')" class="font-mono text-red-700 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">- ¥{{ number_format($expenseTotal) }}</button></td>
                         </tr>
                         <tr class="border-t">
                             <td class="px-4 py-2 text-gray-600">減価償却費</td>
-                            <td class="px-4 py-2 text-right font-mono text-purple-700">- ¥{{ number_format($depreciationTotal) }}</td>
+                            <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $depreciationTotal }}')" class="font-mono text-purple-700 hover:bg-purple-50 px-2 py-1 rounded cursor-pointer">- ¥{{ number_format($depreciationTotal) }}</button></td>
                         </tr>
                         <tr class="border-t bg-gray-50 font-bold">
                             <td class="px-4 py-2">営業利益</td>
-                            <td class="px-4 py-2 text-right font-mono {{ $grossProfit >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                ¥{{ number_format($grossProfit) }}
-                            </td>
+                            <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $grossProfit }}')" class="font-mono {{ $grossProfit >= 0 ? 'text-green-700 hover:bg-green-50' : 'text-red-700 hover:bg-red-50' }} px-2 py-1 rounded cursor-pointer">¥{{ number_format($grossProfit) }}</button></td>
                         </tr>
                         @if($otherIncomeTotal > 0)
                         <tr class="border-t">
                             <td class="px-4 py-2 text-gray-600">雑収入</td>
-                            <td class="px-4 py-2 text-right font-mono text-blue-700">+ ¥{{ number_format($otherIncomeTotal) }}</td>
+                            <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $otherIncomeTotal }}')" class="font-mono text-blue-700 hover:bg-blue-50 px-2 py-1 rounded cursor-pointer">+ ¥{{ number_format($otherIncomeTotal) }}</button></td>
                         </tr>
                         @endif
                     </tbody>
                     <tfoot class="font-bold {{ $netIncome >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
                         <tr class="border-t-2">
                             <td class="px-4 py-3 text-lg">当期純利益</td>
-                            <td class="px-4 py-3 text-right font-mono text-xl {{ $netIncome >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                ¥{{ number_format($netIncome) }}
-                            </td>
+                            <td class="px-4 py-3 text-right"><button onclick="copyVal('{{ $netIncome }}')" class="font-mono text-xl {{ $netIncome >= 0 ? 'text-green-700 hover:bg-green-100' : 'text-red-700 hover:bg-red-100' }} px-2 py-1 rounded cursor-pointer">¥{{ number_format($netIncome) }}</button></td>
                         </tr>
                     </tfoot>
                 </table>

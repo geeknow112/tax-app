@@ -46,11 +46,11 @@
                         <tr class="border-t hover:bg-gray-50">
                             <td class="px-3 py-2">{{ $dep->asset_name }}</td>
                             <td class="px-3 py-2 text-sm">{{ $dep->acquisition_date->format('Y/m/d') }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-sm">¥{{ number_format($dep->acquisition_cost) }}</td>
+                            <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->acquisition_cost }}')" class="font-mono text-sm hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->acquisition_cost) }}</button></td>
                             <td class="px-3 py-2 text-center text-sm">{{ $dep->useful_life }}年</td>
-                            <td class="px-3 py-2 text-right font-mono font-bold text-purple-700">¥{{ number_format($dep->depreciation_amount) }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-sm text-gray-500">¥{{ number_format($dep->accumulated_depreciation) }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-sm">¥{{ number_format($dep->book_value) }}</td>
+                            <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->depreciation_amount }}')" class="font-mono font-bold text-purple-700 hover:bg-purple-50 px-1 rounded cursor-pointer">¥{{ number_format($dep->depreciation_amount) }}</button></td>
+                            <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->accumulated_depreciation }}')" class="font-mono text-sm text-gray-500 hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->accumulated_depreciation) }}</button></td>
+                            <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->book_value }}')" class="font-mono text-sm hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->book_value) }}</button></td>
                             <td class="px-3 py-2">
                                 <form method="POST" action="{{ route('depreciations.destroy', $dep) }}" onsubmit="return confirm('削除しますか？')">
                                     @csrf @method('DELETE')
