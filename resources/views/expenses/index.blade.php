@@ -164,6 +164,12 @@
                         @endforeach
                     </select>
                 </div>
+                <button @click="deleteExpense({{ $expense->id }})"
+                    class="text-gray-400 hover:text-red-500 p-1" title="削除">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
             </div>
             @empty
             <div class="bg-white rounded shadow p-8 text-center text-gray-500">
@@ -343,6 +349,20 @@ function expenseApp() {
             if (data.success) {
                 alert(`${data.updated_count}件を「${data.category_name}」に一括適用しました`);
                 location.reload();
+            }
+        },
+
+        async deleteExpense(id) {
+            if (!confirm('この経費を削除しますか？')) return;
+            const res = await fetch(`/expenses/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById(`expense-${id}`).remove();
             }
         },
     };

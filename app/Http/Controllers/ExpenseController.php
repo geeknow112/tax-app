@@ -145,6 +145,18 @@ class ExpenseController extends Controller
     }
 
     /**
+     * 経費を削除（AJAX）
+     */
+    public function destroy(Expense $expense)
+    {
+        $expense->delete();
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
+
+    /**
      * チェックした明細に一括で科目を適用（AJAX）
      */
     public function bulkClassify(Request $request)
