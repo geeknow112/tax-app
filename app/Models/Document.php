@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Document extends Model
 {
     protected $fillable = [
-        'fiscal_year_id', 'type', 'document_number', 'issue_date', 'due_date',
+        'entity_id', 'fiscal_year_id', 'type', 'document_number', 'issue_date', 'due_date',
         'client_name', 'client_address', 'subject', 'subtotal', 'tax', 'total',
         'status', 'notes',
     ];
@@ -32,6 +32,11 @@ class Document extends Model
         'paid' => '入金済',
         'cancelled' => 'キャンセル',
     ];
+
+    public function entity(): BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
 
     public function fiscalYear(): BelongsTo
     {

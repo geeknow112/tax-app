@@ -10,20 +10,35 @@ use Illuminate\Http\Request;
 class ExpenseController extends Controller
 {
     /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
+    /**
      * 仕訳画面
      */
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
         $filter = $request->input('filter', 'all'); // all, unclassified, classified
         $search = $request->input('search', '');
         $paymentMethod = $request->input('payment_method', 'all'); // all, credit_card, cash, paypay
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
-        $prevYear = FiscalYear::where('year', $currentYear - 1)->first();
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
+        $prevYear = FiscalYear::where('year', $currentYear - 1)
+            ->where('entity_id', $entityId)
+            ->first();
 
-        // 今年の経費
+        // 今年の経費（事業体でフィルタ）
         $query = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->with('accountCategory');
 
         if ($filter === 'unclassified') {
@@ -46,6 +61,7 @@ class ExpenseController extends Controller
         $prevExpenses = collect();
         if ($prevYear) {
             $prevQuery = Expense::where('fiscal_year_id', $prevYear->id)
+                ->where('entity_id', $entityId)
                 ->whereNotNull('account_category_id')
                 ->with('accountCategory');
             if ($search) {
@@ -54,12 +70,18 @@ class ExpenseController extends Controller
             $prevExpenses = $prevQuery->orderBy('date')->get();
         }
 
-        $categories = AccountCategory::orderBy('sort_order')->get();
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        $categories = AccountCategory::where(function($q) use ($entityId) {
+            $q->where('entity_id', $entityId)->orWhereNull('entity_id');
+        })->orderBy('sort_order')->get();
+        
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         // 集計
-        $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)->count();
+        $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)->count();
         $classifiedCount = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')->count();
 
         return view('expenses.index', compact(
@@ -74,6 +96,8 @@ class ExpenseController extends Controller
      */
     public function store(Request $request)
     {
+        $entityId = $this->currentEntityId();
+        
         $request->validate([
             'date' => 'required|date',
             'vendor_name' => 'required|string|max:255',
@@ -83,9 +107,13 @@ class ExpenseController extends Controller
             'year' => 'required|integer',
         ]);
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->year]);
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $request->year, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
 
         $expense = Expense::create([
+            'entity_id' => $entityId,
             'fiscal_year_id' => $fiscalYear->id,
             'date' => $request->date,
             'vendor_name' => $request->vendor_name,
@@ -125,15 +153,19 @@ class ExpenseController extends Controller
      */
     public function searchPrevYear(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $vendorName = $request->input('vendor_name', '');
         $currentYear = $request->input('year', date('Y'));
-        $prevYear = FiscalYear::where('year', $currentYear - 1)->first();
+        $prevYear = FiscalYear::where('year', $currentYear - 1)
+            ->where('entity_id', $entityId)
+            ->first();
 
         if (!$prevYear || !$vendorName) {
             return response()->json([]);
         }
 
         $results = Expense::where('fiscal_year_id', $prevYear->id)
+            ->where('entity_id', $entityId)
             ->where('vendor_name', 'like', "%{$vendorName}%")
             ->whereNotNull('account_category_id')
             ->with('accountCategory')

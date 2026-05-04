@@ -8,13 +8,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Expense extends Model
 {
     protected $fillable = [
-        'fiscal_year_id', 'date', 'vendor_name', 'description',
+        'entity_id', 'fiscal_year_id', 'date', 'vendor_name', 'description',
         'amount', 'payment_method', 'account_category_id', 'memo',
     ];
 
     protected $casts = [
         'date' => 'date',
     ];
+
+    public function entity(): BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
 
     public function fiscalYear(): BelongsTo
     {

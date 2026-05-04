@@ -7,21 +7,40 @@ use Illuminate\Http\Request;
 
 class AccountCategoryController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index()
     {
-        $categories = AccountCategory::orderBy('sort_order')->get();
+        $entityId = $this->currentEntityId();
+        
+        // 事業体に紐づく科目 + 共通科目（entity_id = NULL）
+        $categories = AccountCategory::where(function($q) use ($entityId) {
+            $q->where('entity_id', $entityId)->orWhereNull('entity_id');
+        })->orderBy('sort_order')->get();
+        
         return view('categories.index', compact('categories'));
     }
 
     public function store(Request $request)
     {
+        $entityId = $this->currentEntityId();
+        
         $request->validate([
             'name' => 'required|string|max:255|unique:account_categories,name',
         ]);
 
-        $maxSort = AccountCategory::max('sort_order') ?? 0;
+        $maxSort = AccountCategory::where(function($q) use ($entityId) {
+            $q->where('entity_id', $entityId)->orWhereNull('entity_id');
+        })->max('sort_order') ?? 0;
 
         AccountCategory::create([
+            'entity_id' => $entityId,
             'name' => $request->name,
             'sort_order' => $maxSort + 1,
         ]);

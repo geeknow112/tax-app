@@ -8,19 +8,37 @@ use Illuminate\Http\Request;
 
 class RevenueController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
+        
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         $revenues = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->orderBy('date')
             ->paginate(50);
 
         $totalSales = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->where('revenue_type', 'sales')->sum('amount');
         $totalOther = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->where('revenue_type', 'other')->sum('amount');
 
         return view('revenues.index', compact(
@@ -30,6 +48,8 @@ class RevenueController extends Controller
 
     public function store(Request $request)
     {
+        $entityId = $this->currentEntityId();
+        
         $request->validate([
             'date' => 'required|date',
             'client_name' => 'required|string|max:255',
@@ -37,9 +57,13 @@ class RevenueController extends Controller
             'revenue_type' => 'required|in:sales,other',
         ]);
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->input('year', date('Y'))]);
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $request->input('year', date('Y')), 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
 
         Revenue::create([
+            'entity_id' => $entityId,
             'fiscal_year_id' => $fiscalYear->id,
             'date' => $request->date,
             'client_name' => $request->client_name,

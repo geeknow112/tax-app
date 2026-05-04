@@ -4,11 +4,16 @@ use App\Http\Controllers\AccountCategoryController;
 use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\DepreciationController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EntityController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ProfitLossController;
 use App\Http\Controllers\RevenueController;
 use Illuminate\Support\Facades\Route;
+
+// 事業体切り替え
+Route::post('/entity/switch', [EntityController::class, 'switch'])->name('entity.switch');
+Route::resource('entities', EntityController::class);
 
 Route::get('/', [ExpenseController::class, 'index'])->name('expenses.index');
 Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');

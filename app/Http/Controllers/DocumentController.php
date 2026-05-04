@@ -9,15 +9,28 @@ use Illuminate\Http\Request;
 
 class DocumentController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
         $type = $request->input('type', 'all');
         $status = $request->input('status', 'all');
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
 
         $query = Document::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->with('items')
             ->orderBy('issue_date', 'desc');
 
@@ -29,7 +42,8 @@ class DocumentController extends Controller
         }
 
         $documents = $query->paginate(30);
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         return view('documents.index', compact(
             'documents', 'years', 'currentYear', 'type', 'status'
@@ -47,6 +61,8 @@ class DocumentController extends Controller
 
     public function store(Request $request)
     {
+        $entityId = $this->currentEntityId();
+        
         $request->validate([
             'type' => 'required|in:estimate,order,invoice,delivery',
             'document_number' => 'required|unique:documents',
@@ -55,9 +71,13 @@ class DocumentController extends Controller
             'year' => 'required|integer',
         ]);
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->year]);
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $request->year, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
 
         $document = Document::create([
+            'entity_id' => $entityId,
             'fiscal_year_id' => $fiscalYear->id,
             'type' => $request->type,
             'document_number' => $request->document_number,

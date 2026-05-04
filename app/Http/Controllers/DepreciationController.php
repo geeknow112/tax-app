@@ -8,13 +8,29 @@ use Illuminate\Http\Request;
 
 class DepreciationController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
+        
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         $depreciations = Depreciation::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->orderBy('acquisition_date')
             ->get();
 
@@ -29,6 +45,8 @@ class DepreciationController extends Controller
 
     public function store(Request $request)
     {
+        $entityId = $this->currentEntityId();
+        
         $request->validate([
             'asset_name' => 'required|string|max:255',
             'acquisition_date' => 'required|date',
@@ -37,9 +55,13 @@ class DepreciationController extends Controller
             'method' => 'required|in:straight_line,declining_balance',
         ]);
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->input('year', date('Y'))]);
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $request->input('year', date('Y')), 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
 
         $depreciation = new Depreciation([
+            'entity_id' => $entityId,
             'fiscal_year_id' => $fiscalYear->id,
             'asset_name' => $request->asset_name,
             'acquisition_date' => $request->acquisition_date,

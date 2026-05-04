@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Depreciation extends Model
 {
     protected $fillable = [
-        'fiscal_year_id', 'asset_name', 'acquisition_date', 'acquisition_cost',
+        'entity_id', 'fiscal_year_id', 'asset_name', 'acquisition_date', 'acquisition_cost',
         'useful_life', 'method', 'depreciation_amount',
         'accumulated_depreciation', 'book_value', 'memo',
     ];
@@ -16,6 +16,11 @@ class Depreciation extends Model
     protected $casts = [
         'acquisition_date' => 'date',
     ];
+
+    public function entity(): BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
 
     public function fiscalYear(): BelongsTo
     {
