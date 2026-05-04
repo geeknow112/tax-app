@@ -64,6 +64,16 @@
         <button @click="bulkClassify()" class="bg-white text-indigo-700 px-4 py-1 rounded text-sm font-bold hover:bg-indigo-100">
             一括適用
         </button>
+        <span class="text-indigo-200">|</span>
+        <select x-model="bulkEntityId" class="border rounded px-3 py-1 text-sm text-gray-800">
+            <option value="">-- 事業体を選択 --</option>
+            @foreach($allEntities as $ent)
+                <option value="{{ $ent->id }}">{{ $ent->name }}</option>
+            @endforeach
+        </select>
+        <button @click="bulkChangeEntity()" class="bg-yellow-400 text-yellow-900 px-4 py-1 rounded text-sm font-bold hover:bg-yellow-300">
+            事業体変更
+        </button>
         <button @click="selectedIds = []" class="text-indigo-200 hover:text-white text-sm ml-auto">選択解除</button>
     </div>
 
@@ -152,6 +162,19 @@
                 <div class="text-right font-mono font-bold whitespace-nowrap">
                     ¥{{ number_format($expense->amount) }}
                 </div>
+                <div class="w-28">
+                    <select class="border rounded px-2 py-1 w-full text-xs
+                        {{ $expense->entity_id == ($currentEntity->id ?? null) ? 'bg-gray-100' : 'bg-yellow-100 border-yellow-400' }}"
+                        @change="changeEntity({{ $expense->id }}, $event.target.value)"
+                        id="entity-select-{{ $expense->id }}">
+                        @foreach($allEntities as $ent)
+                            <option value="{{ $ent->id }}"
+                                {{ $expense->entity_id == $ent->id ? 'selected' : '' }}>
+                                {{ $ent->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="w-44">
                     <select class="border rounded px-2 py-1 w-full text-sm"
                         @change="classify({{ $expense->id }}, $event.target.value)">
@@ -233,6 +256,7 @@ function expenseApp() {
         prevLoading: false,
         selectedIds: [],
         bulkCategoryId: '',
+        bulkEntityId: '',
         addingExpense: false,
         newExpense: {
             date: new Date().toISOString().split('T')[0],
@@ -348,6 +372,51 @@ function expenseApp() {
             const data = await res.json();
             if (data.success) {
                 alert(`${data.updated_count}件を「${data.category_name}」に一括適用しました`);
+                location.reload();
+            }
+        },
+
+        async changeEntity(expenseId, entityId) {
+            const res = await fetch(`/expenses/${expenseId}/change-entity`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ entity_id: entityId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                // 事業体が変更されたら行の背景色を更新
+                const selectEl = document.getElementById(`entity-select-${expenseId}`);
+                selectEl.classList.remove('bg-gray-100', 'bg-yellow-100', 'border-yellow-400');
+                selectEl.classList.add('bg-yellow-100', 'border-yellow-400');
+            }
+        },
+
+        async bulkChangeEntity() {
+            if (!this.bulkEntityId) {
+                alert('事業体を選択してください');
+                return;
+            }
+            if (this.selectedIds.length === 0) return;
+
+            if (!confirm(`選択した${this.selectedIds.length}件の経費を別の事業体に移動しますか？`)) return;
+
+            const res = await fetch('/expenses/bulk-change-entity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    expense_ids: this.selectedIds,
+                    entity_id: this.bulkEntityId,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`${data.updated_count}件を「${data.entity_name}」に移動しました`);
                 location.reload();
             }
         },
