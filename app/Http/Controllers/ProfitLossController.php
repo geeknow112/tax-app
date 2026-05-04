@@ -12,21 +12,39 @@ use Illuminate\Support\Facades\DB;
 
 class ProfitLossController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
+        
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         // === 売上集計 ===
         $revenueTotal = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->where('revenue_type', 'sales')->sum('amount');
         $otherIncomeTotal = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->where('revenue_type', 'other')->sum('amount');
 
         // 売上月別
         $monthlyRevenue = [];
         $revenueByMonth = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->select(DB::raw('MONTH(date) as month'), DB::raw('SUM(amount) as total'))
             ->groupBy(DB::raw('MONTH(date)'))
             ->pluck('total', 'month')->toArray();
@@ -36,6 +54,7 @@ class ProfitLossController extends Controller
 
         // === 経費 科目×支払方法別集計 ===
         $expensesByCategoryAndMethod = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')
             ->select('account_category_id', 'payment_method', DB::raw('SUM(amount) as total'))
             ->groupBy('account_category_id', 'payment_method')
@@ -47,9 +66,12 @@ class ProfitLossController extends Controller
         }
 
         $unclassifiedTotal = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNull('account_category_id')->sum('amount');
 
-        $categories = AccountCategory::orderBy('sort_order')->get();
+        $categories = AccountCategory::where(function($q) use ($entityId) {
+            $q->where('entity_id', $entityId)->orWhereNull('entity_id');
+        })->orderBy('sort_order')->get();
 
         $plItems = [];
         $expenseTotal = 0;
@@ -77,10 +99,12 @@ class ProfitLossController extends Controller
 
         // === 減価償却費 ===
         $depreciationTotal = Depreciation::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->sum('depreciation_amount');
 
         // === 月別経費集計 ===
         $monthlyTotals = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')
             ->select(DB::raw('MONTH(date) as month'), DB::raw('SUM(amount) as total'))
             ->groupBy(DB::raw('MONTH(date)'))
@@ -96,8 +120,10 @@ class ProfitLossController extends Controller
         $netIncome = $grossProfit + $otherIncomeTotal;
 
         // 仕訳状況
-        $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)->count();
+        $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)->count();
         $classifiedCount = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')->count();
 
         return view('pl.index', compact(

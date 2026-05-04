@@ -11,22 +11,41 @@ use Illuminate\Support\Facades\DB;
 
 class BalanceSheetController extends Controller
 {
+    /**
+     * 現在の事業体IDを取得
+     */
+    private function currentEntityId(): ?int
+    {
+        return session('current_entity_id');
+    }
+
     public function index(Request $request)
     {
+        $entityId = $this->currentEntityId();
         $currentYear = $request->input('year', date('Y'));
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $currentYear]);
-        $years = FiscalYear::orderBy('year', 'desc')->pluck('year');
+        
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $currentYear, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
+        
+        $years = FiscalYear::where('entity_id', $entityId)
+            ->orderBy('year', 'desc')->pluck('year');
 
         // === 資産の部 ===
         // 現金・預金（売上 - 経費の残高として簡易計算）
-        $revenueTotal = Revenue::where('fiscal_year_id', $fiscalYear->id)->sum('amount');
+        $revenueTotal = Revenue::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)->sum('amount');
         $expenseTotal = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')->sum('amount');
         $unclassifiedExpense = Expense::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)
             ->whereNull('account_category_id')->sum('amount');
 
         // 固定資産（減価償却後の帳簿価額）
-        $depreciations = Depreciation::where('fiscal_year_id', $fiscalYear->id)->get();
+        $depreciations = Depreciation::where('fiscal_year_id', $fiscalYear->id)
+            ->where('entity_id', $entityId)->get();
         $fixedAssetTotal = $depreciations->sum('book_value');
         $acquisitionTotal = $depreciations->sum('acquisition_cost');
         $accumulatedDepTotal = $depreciations->sum('accumulated_depreciation');

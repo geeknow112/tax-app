@@ -35,7 +35,21 @@
         <div class="flex items-center justify-between px-4 py-3">
             <a href="{{ route('expenses.index') }}" class="text-xl font-bold text-white">確定申告サポート</a>
             <div class="flex items-center gap-4">
-                {{-- 将来用: ユーザー情報、通知、設定など --}}
+                <!-- 事業体セレクタ -->
+                <form action="{{ route('entity.switch') }}" method="POST" class="flex items-center gap-2">
+                    @csrf
+                    <label class="text-gray-400 text-sm">事業体:</label>
+                    <select name="entity_id" onchange="this.form.submit()" class="bg-freee-hover text-white border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-freee-blue">
+                        @foreach($entities ?? [] as $entity)
+                            <option value="{{ $entity->id }}" {{ ($currentEntity->id ?? null) == $entity->id ? 'selected' : '' }}>
+                                {{ $entity->name }}
+                                @if($entity->isCorporation())
+                                    ({{ $entity->fiscal_year_start }}月決算)
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
             </div>
         </div>
     </header>
@@ -83,6 +97,10 @@
                 <a href="{{ route('categories.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-freee-hover transition {{ request()->routeIs('categories.*') ? 'bg-freee-active text-white font-semibold' : '' }}">
                     <span class="text-lg">⚙️</span>
                     <span>勘定科目</span>
+                </a>
+                <a href="{{ route('entities.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-freee-hover transition {{ request()->routeIs('entities.*') ? 'bg-freee-active text-white font-semibold' : '' }}">
+                    <span class="text-lg">🏛️</span>
+                    <span>事業体管理</span>
                 </a>
             </nav>
         </aside>
