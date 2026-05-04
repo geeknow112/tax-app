@@ -21,6 +21,8 @@ Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->nam
 Route::post('/expenses/{expense}/classify', [ExpenseController::class, 'classify'])->name('expenses.classify');
 Route::get('/expenses/search-prev', [ExpenseController::class, 'searchPrevYear'])->name('expenses.searchPrev');
 Route::post('/expenses/bulk-classify', [ExpenseController::class, 'bulkClassify'])->name('expenses.bulkClassify');
+Route::post('/expenses/{expense}/change-entity', [ExpenseController::class, 'changeEntity'])->name('expenses.changeEntity');
+Route::post('/expenses/bulk-change-entity', [ExpenseController::class, 'bulkChangeEntity'])->name('expenses.bulkChangeEntity');
 
 Route::get('/import', [ImportController::class, 'show'])->name('import.show');
 Route::post('/import', [ImportController::class, 'store'])->name('import.store');

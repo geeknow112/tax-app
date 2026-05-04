@@ -39,7 +39,7 @@ class ExpenseController extends Controller
         // 今年の経費（事業体でフィルタ）
         $query = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
-            ->with('accountCategory');
+            ->with(['accountCategory', 'entity']);
 
         if ($filter === 'unclassified') {
             $query->whereNull('account_category_id');
@@ -77,6 +77,9 @@ class ExpenseController extends Controller
         $years = FiscalYear::where('entity_id', $entityId)
             ->orderBy('year', 'desc')->pluck('year');
 
+        // 全事業体（事業体変更用）
+        $allEntities = \App\Models\Entity::all();
+
         // 集計
         $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)->count();
@@ -87,7 +90,7 @@ class ExpenseController extends Controller
         return view('expenses.index', compact(
             'expenses', 'prevExpenses', 'categories', 'years',
             'currentYear', 'filter', 'search', 'paymentMethod',
-            'totalCount', 'classifiedCount'
+            'totalCount', 'classifiedCount', 'allEntities'
         ));
     }
 
@@ -208,6 +211,70 @@ class ExpenseController extends Controller
             'success' => true,
             'updated_count' => $updated,
             'category_name' => $categoryName,
+        ]);
+    }
+
+    /**
+     * 経費の事業体を変更（AJAX）
+     */
+    public function changeEntity(Request $request, Expense $expense)
+    {
+        $request->validate([
+            'entity_id' => 'required|exists:entities,id',
+        ]);
+
+        $newEntityId = $request->entity_id;
+        $expense->entity_id = $newEntityId;
+
+        // 新しい事業体の年度を取得または作成
+        $year = $expense->fiscalYear?->year ?? date('Y');
+        $newFiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $year, 'entity_id' => $newEntityId],
+            ['entity_id' => $newEntityId]
+        );
+        $expense->fiscal_year_id = $newFiscalYear->id;
+        $expense->save();
+
+        return response()->json([
+            'success' => true,
+            'entity_name' => $expense->entity->name,
+        ]);
+    }
+
+    /**
+     * チェックした明細の事業体を一括変更（AJAX）
+     */
+    public function bulkChangeEntity(Request $request)
+    {
+        $request->validate([
+            'expense_ids' => 'required|array|min:1',
+            'expense_ids.*' => 'exists:expenses,id',
+            'entity_id' => 'required|exists:entities,id',
+        ]);
+
+        $newEntityId = $request->entity_id;
+        $entity = \App\Models\Entity::find($newEntityId);
+        $updated = 0;
+
+        foreach ($request->expense_ids as $expenseId) {
+            $expense = Expense::find($expenseId);
+            if ($expense) {
+                $year = $expense->fiscalYear?->year ?? date('Y');
+                $newFiscalYear = FiscalYear::firstOrCreate(
+                    ['year' => $year, 'entity_id' => $newEntityId],
+                    ['entity_id' => $newEntityId]
+                );
+                $expense->entity_id = $newEntityId;
+                $expense->fiscal_year_id = $newFiscalYear->id;
+                $expense->save();
+                $updated++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'updated_count' => $updated,
+            'entity_name' => $entity->name,
         ]);
     }
 }
