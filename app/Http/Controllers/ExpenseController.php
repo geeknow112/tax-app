@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountCategory;
+use App\Models\Entity;
 use App\Models\Expense;
 use App\Models\FiscalYear;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
 {
@@ -23,6 +25,7 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $entityId = $this->currentEntityId();
+        $entity = Entity::find($entityId);
         $currentYear = $request->input('year', date('Y'));
         $filter = $request->input('filter', 'all'); // all, unclassified, classified
         $search = $request->input('search', '');
@@ -55,7 +58,19 @@ class ExpenseController extends Controller
             $query->where('vendor_name', 'like', "%{$search}%");
         }
 
-        $expenses = $query->orderBy('date')->paginate(50);
+        // 事業年度開始月を考慮したソート
+        // 4月始まりの場合: 4月=1, 5月=2, ..., 3月=12 となるように変換
+        $fiscalStart = $entity->fiscal_year_start;
+        if ($fiscalStart === 1) {
+            // 1月始まり（個人事業）は通常の日付順
+            $expenses = $query->orderBy('date')->paginate(50);
+        } else {
+            // 4月始まり等の法人は事業年度順
+            $expenses = $query
+                ->orderByRaw("CASE WHEN MONTH(date) >= ? THEN MONTH(date) - ? ELSE MONTH(date) + 12 - ? END", [$fiscalStart, $fiscalStart, $fiscalStart])
+                ->orderBy('date')
+                ->paginate(50);
+        }
 
         // 去年の経費（参照用）
         $prevExpenses = collect();

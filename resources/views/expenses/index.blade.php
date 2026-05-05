@@ -82,7 +82,7 @@
         {{-- 左: 今年の明細 --}}
         <div class="lg:col-span-2 space-y-2">
             <div class="flex items-center gap-3">
-                <h2 class="text-lg font-bold text-gray-700">{{ $currentYear }}年 経費明細</h2>
+                <h2 class="text-lg font-bold text-gray-700">{{ $currentYear }}年度 経費明細</h2>
                 <label class="text-sm text-gray-500 flex items-center gap-1 cursor-pointer">
                     <input type="checkbox" @change="toggleAll($event.target.checked)" class="rounded">
                     全選択
@@ -147,7 +147,7 @@
                     class="rounded">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500">{{ $expense->date->format('m/d') }}</span>
+                        <span class="text-sm text-gray-500">{{ $expense->date->format('Y/m/d') }}</span>
                         <span class="font-medium truncate cursor-pointer hover:text-indigo-600"
                             @click="searchPrev('{{ addslashes($expense->vendor_name) }}')">
                             {{ $expense->vendor_name }}
@@ -204,7 +204,7 @@
 
         {{-- 右: 去年の参照パネル --}}
         <div class="space-y-2">
-            <h2 class="text-lg font-bold text-gray-700">{{ $currentYear - 1 }}年 参照</h2>
+            <h2 class="text-lg font-bold text-gray-700">{{ $currentYear - 1 }}年度 参照</h2>
             <div class="bg-white rounded shadow p-3">
                 <input type="text" x-model="prevSearchQuery" @input.debounce.300ms="searchPrev(prevSearchQuery)"
                     placeholder="利用場所で去年を検索..." class="border rounded px-3 py-2 w-full text-sm mb-2">

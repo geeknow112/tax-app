@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountCategoryController;
+use App\Http\Controllers\AllocationRateController;
 use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\DepreciationController;
 use App\Http\Controllers\DocumentController;
@@ -43,6 +44,9 @@ Route::post('/categories', [AccountCategoryController::class, 'store'])->name('c
 Route::put('/categories/{category}', [AccountCategoryController::class, 'update'])->name('categories.update');
 Route::delete('/categories/{category}', [AccountCategoryController::class, 'destroy'])->name('categories.destroy');
 Route::post('/categories/reorder', [AccountCategoryController::class, 'reorder'])->name('categories.reorder');
+
+Route::get('/allocation-rates', [AllocationRateController::class, 'index'])->name('allocation-rates.index');
+Route::post('/allocation-rates', [AllocationRateController::class, 'update'])->name('allocation-rates.update');
 
 
 Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');

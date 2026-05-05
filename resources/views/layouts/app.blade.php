@@ -98,6 +98,10 @@
                     <span class="text-lg">⚙️</span>
                     <span>勘定科目</span>
                 </a>
+                <a href="{{ route('allocation-rates.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-freee-hover transition {{ request()->routeIs('allocation-rates.*') ? 'bg-freee-active text-white font-semibold' : '' }}">
+                    <span class="text-lg">📐</span>
+                    <span>按分率設定</span>
+                </a>
                 <a href="{{ route('entities.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-freee-hover transition {{ request()->routeIs('entities.*') ? 'bg-freee-active text-white font-semibold' : '' }}">
                     <span class="text-lg">🏛️</span>
                     <span>事業体管理</span>
