@@ -212,7 +212,7 @@
                 <table class="w-full">
                     <tbody>
                         @php $maxRevMonth = max($monthlyRevenue) ?: 1; @endphp
-                        @for($m = 1; $m <= 12; $m++)
+                        @foreach($fiscalMonthOrder as $m)
                         <tr class="border-t hover:bg-gray-50">
                             <td class="px-4 py-1 text-sm">{{ $m }}月</td>
                             <td class="px-4 py-1 text-right font-mono text-sm">
@@ -224,7 +224,7 @@
                                 </div>
                             </td>
                         </tr>
-                        @endfor
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -237,7 +237,7 @@
                 <table class="w-full">
                     <tbody>
                         @php $maxMonthly = max($monthly) ?: 1; @endphp
-                        @for($m = 1; $m <= 12; $m++)
+                        @foreach($fiscalMonthOrder as $m)
                         <tr class="border-t hover:bg-gray-50">
                             <td class="px-4 py-1 text-sm">{{ $m }}月</td>
                             <td class="px-4 py-1 text-right font-mono text-sm">
@@ -249,7 +249,7 @@
                                 </div>
                             </td>
                         </tr>
-                        @endfor
+                        @endforeach
                     </tbody>
                 </table>
             </div>

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountCategory;
+use App\Models\AllocationRate;
 use App\Models\Depreciation;
+use App\Models\Entity;
 use App\Models\Expense;
 use App\Models\FiscalYear;
 use App\Models\Revenue;
@@ -13,6 +15,16 @@ use Illuminate\Support\Facades\DB;
 class ProfitLossController extends Controller
 {
     /**
+     * 按分率を取得（科目ID => 按分率%）
+     */
+    private function getAllocationRates(int $entityId): array
+    {
+        return AllocationRate::where('entity_id', $entityId)
+            ->pluck('rate', 'account_category_id')
+            ->toArray();
+    }
+
+    /**
      * 現在の事業体IDを取得
      */
     private function currentEntityId(): ?int
@@ -20,9 +32,24 @@ class ProfitLossController extends Controller
         return session('current_entity_id');
     }
 
+    /**
+     * 事業年度の月順序を取得（4月決算なら [4,5,6,7,8,9,10,11,12,1,2,3]）
+     */
+    private function getFiscalMonthOrder(Entity $entity): array
+    {
+        $start = $entity->fiscal_year_start;
+        $months = [];
+        for ($i = 0; $i < 12; $i++) {
+            $m = (($start - 1 + $i) % 12) + 1;
+            $months[] = $m;
+        }
+        return $months;
+    }
+
     public function index(Request $request)
     {
         $entityId = $this->currentEntityId();
+        $entity = Entity::find($entityId);
         $currentYear = $request->input('year', date('Y'));
         
         $fiscalYear = FiscalYear::firstOrCreate(
@@ -33,6 +60,10 @@ class ProfitLossController extends Controller
         $years = FiscalYear::where('entity_id', $entityId)
             ->orderBy('year', 'desc')->pluck('year');
 
+        // 事業年度の期間を取得
+        $fiscalPeriod = $entity->getFiscalPeriod($currentYear);
+        $fiscalMonthOrder = $this->getFiscalMonthOrder($entity);
+
         // === 売上集計 ===
         $revenueTotal = Revenue::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
@@ -41,18 +72,23 @@ class ProfitLossController extends Controller
             ->where('entity_id', $entityId)
             ->where('revenue_type', 'other')->sum('amount');
 
-        // 売上月別
-        $monthlyRevenue = [];
+        // 売上月別（月でグループ化 - fiscal_year_idで既に絞られている）
         $revenueByMonth = Revenue::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
             ->select(DB::raw('MONTH(date) as month'), DB::raw('SUM(amount) as total'))
             ->groupBy(DB::raw('MONTH(date)'))
-            ->pluck('total', 'month')->toArray();
-        for ($m = 1; $m <= 12; $m++) {
+            ->pluck('total', 'month')
+            ->toArray();
+        
+        $monthlyRevenue = [];
+        foreach ($fiscalMonthOrder as $m) {
             $monthlyRevenue[$m] = $revenueByMonth[$m] ?? 0;
         }
 
-        // === 経費 科目×支払方法別集計 ===
+        // === 按分率を取得 ===
+        $allocationRates = $this->getAllocationRates($entityId);
+
+        // === 経費 科目×支払方法別集計（按分率適用） ===
         $expensesByCategoryAndMethod = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')
@@ -62,7 +98,8 @@ class ProfitLossController extends Controller
 
         $categoryMethodMap = [];
         foreach ($expensesByCategoryAndMethod as $row) {
-            $categoryMethodMap[$row->account_category_id][$row->payment_method] = $row->total;
+            $rate = ($allocationRates[$row->account_category_id] ?? 100) / 100;
+            $categoryMethodMap[$row->account_category_id][$row->payment_method] = (int) round($row->total * $rate);
         }
 
         $unclassifiedTotal = Expense::where('fiscal_year_id', $fiscalYear->id)
@@ -90,6 +127,7 @@ class ProfitLossController extends Controller
                 'credit_card' => $creditCard,
                 'cash' => $cash,
                 'paypay' => $paypay,
+                'rate' => $allocationRates[$cat->id] ?? 100,
             ];
             $expenseTotal += $amount;
             $totalByMethod['credit_card'] += $creditCard;
@@ -102,17 +140,24 @@ class ProfitLossController extends Controller
             ->where('entity_id', $entityId)
             ->sum('depreciation_amount');
 
-        // === 月別経費集計 ===
-        $monthlyTotals = Expense::where('fiscal_year_id', $fiscalYear->id)
+        // === 月別経費集計（按分率適用） ===
+        $expenseByMonthAndCategory = Expense::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
             ->whereNotNull('account_category_id')
-            ->select(DB::raw('MONTH(date) as month'), DB::raw('SUM(amount) as total'))
-            ->groupBy(DB::raw('MONTH(date)'))
-            ->pluck('total', 'month')->toArray();
+            ->select('account_category_id', DB::raw('MONTH(date) as month'), DB::raw('SUM(amount) as total'))
+            ->groupBy('account_category_id', DB::raw('MONTH(date)'))
+            ->get();
+
+        $monthlyRaw = [];
+        foreach ($expenseByMonthAndCategory as $row) {
+            $rate = ($allocationRates[$row->account_category_id] ?? 100) / 100;
+            $allocated = (int) round($row->total * $rate);
+            $monthlyRaw[$row->month] = ($monthlyRaw[$row->month] ?? 0) + $allocated;
+        }
 
         $monthly = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $monthly[$m] = $monthlyTotals[$m] ?? 0;
+        foreach ($fiscalMonthOrder as $m) {
+            $monthly[$m] = $monthlyRaw[$m] ?? 0;
         }
 
         // === P/L サマリー ===
@@ -131,7 +176,7 @@ class ProfitLossController extends Controller
             'unclassifiedTotal', 'monthly', 'totalCount', 'classifiedCount',
             'totalByMethod', 'revenueTotal', 'otherIncomeTotal',
             'depreciationTotal', 'grossProfit', 'netIncome',
-            'monthlyRevenue'
+            'monthlyRevenue', 'fiscalMonthOrder', 'entity'
         ));
     }
 }
