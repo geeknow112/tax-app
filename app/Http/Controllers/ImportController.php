@@ -123,8 +123,16 @@ class ImportController extends Controller
             $date = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
             return $date->format('Y-m-d');
         }
+        // 日本語形式: 2026年1月10日
+        if (preg_match('/(\d{4})年(\d{1,2})月(\d{1,2})日/', $value, $m)) {
+            return sprintf('%04d-%02d-%02d', $m[1], $m[2], $m[3]);
+        }
         try {
-            return date('Y-m-d', strtotime($value));
+            $ts = strtotime($value);
+            if ($ts === false) {
+                return null;
+            }
+            return date('Y-m-d', $ts);
         } catch (\Exception $e) {
             return null;
         }
