@@ -39,9 +39,13 @@ class ExpenseController extends Controller
             ->where('entity_id', $entityId)
             ->first();
 
-        // 今年の経費（事業体でフィルタ）
-        $query = Expense::where('fiscal_year_id', $fiscalYear->id)
-            ->where('entity_id', $entityId)
+        // 決算期間を取得
+        $fiscalPeriod = $entity->getFiscalPeriod((int)$currentYear);
+
+        // 今年の経費（日付範囲でフィルタ）
+        $query = Expense::where('entity_id', $entityId)
+            ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
+            ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
             ->with(['accountCategory', 'entity']);
 
         if ($filter === 'unclassified') {
@@ -73,17 +77,16 @@ class ExpenseController extends Controller
         }
 
         // 去年の経費（参照用）
-        $prevExpenses = collect();
-        if ($prevYear) {
-            $prevQuery = Expense::where('fiscal_year_id', $prevYear->id)
-                ->where('entity_id', $entityId)
-                ->whereNotNull('account_category_id')
-                ->with('accountCategory');
-            if ($search) {
-                $prevQuery->where('vendor_name', 'like', "%{$search}%");
-            }
-            $prevExpenses = $prevQuery->orderBy('date')->get();
+        $prevFiscalPeriod = $entity->getFiscalPeriod($currentYear - 1);
+        $prevQuery = Expense::where('entity_id', $entityId)
+            ->whereDate('date', '>=', $prevFiscalPeriod['start']->format('Y-m-d'))
+            ->whereDate('date', '<=', $prevFiscalPeriod['end']->format('Y-m-d'))
+            ->whereNotNull('account_category_id')
+            ->with('accountCategory');
+        if ($search) {
+            $prevQuery->where('vendor_name', 'like', "%{$search}%");
         }
+        $prevExpenses = $prevQuery->orderBy('date')->get();
 
         $categories = AccountCategory::where(function($q) use ($entityId) {
             $q->where('entity_id', $entityId)->orWhereNull('entity_id');
@@ -96,10 +99,13 @@ class ExpenseController extends Controller
         $allEntities = \App\Models\Entity::all();
 
         // 集計
-        $totalCount = Expense::where('fiscal_year_id', $fiscalYear->id)
-            ->where('entity_id', $entityId)->count();
-        $classifiedCount = Expense::where('fiscal_year_id', $fiscalYear->id)
-            ->where('entity_id', $entityId)
+        $totalCount = Expense::where('entity_id', $entityId)
+            ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
+            ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
+            ->count();
+        $classifiedCount = Expense::where('entity_id', $entityId)
+            ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
+            ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
             ->whereNotNull('account_category_id')->count();
 
         return view('expenses.index', compact(
