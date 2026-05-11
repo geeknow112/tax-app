@@ -108,10 +108,29 @@ class ExpenseController extends Controller
             ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
             ->whereNotNull('account_category_id')->count();
 
+        // 検索結果の集計（フィルタ適用後）
+        $filteredQuery = Expense::where('entity_id', $entityId)
+            ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
+            ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'));
+        if ($filter === 'unclassified') {
+            $filteredQuery->whereNull('account_category_id');
+        } elseif ($filter === 'classified') {
+            $filteredQuery->whereNotNull('account_category_id');
+        }
+        if ($paymentMethod !== 'all') {
+            $filteredQuery->where('payment_method', $paymentMethod);
+        }
+        if ($search) {
+            $filteredQuery->where('vendor_name', 'like', "%{$search}%");
+        }
+        $filteredCount = $filteredQuery->count();
+        $filteredSum = $filteredQuery->sum('amount');
+
         return view('expenses.index', compact(
             'expenses', 'prevExpenses', 'categories', 'years',
             'currentYear', 'filter', 'search', 'paymentMethod',
-            'totalCount', 'classifiedCount', 'allEntities'
+            'totalCount', 'classifiedCount', 'allEntities',
+            'filteredCount', 'filteredSum'
         ));
     }
 

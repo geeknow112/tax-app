@@ -51,6 +51,23 @@
         </div>
     </div>
 
+    {{-- 検索結果の集計 --}}
+    @if($search || $filter !== 'all' || $paymentMethod !== 'all')
+    <div class="bg-blue-50 border border-blue-200 rounded shadow p-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-700 font-medium">検索結果</span>
+            <span class="text-blue-600">{{ $filteredCount }}件</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-blue-600">合計:</span>
+            <span class="text-blue-800 font-bold text-lg cursor-pointer hover:bg-blue-100 px-2 rounded"
+                @click="copyToClipboard('{{ $filteredSum }}')" title="クリックでコピー">
+                ¥{{ number_format($filteredSum) }}
+            </span>
+        </div>
+    </div>
+    @endif
+
     {{-- 一括適用バー（選択時に表示） --}}
     <div x-show="selectedIds.length > 0" x-cloak
         class="bg-indigo-600 text-white rounded shadow p-3 flex items-center gap-4 sticky top-0 z-10">
