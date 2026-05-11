@@ -147,7 +147,9 @@
                     class="rounded">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500">{{ $expense->date->format('Y/m/d') }}</span>
+                        <span class="text-sm text-gray-500 cursor-pointer hover:bg-gray-200 px-1 rounded"
+                            @click="copyToClipboard('{{ $expense->date->format('Y/m/d') }}')"
+                            title="クリックでコピー">{{ $expense->date->format('Y/m/d') }}</span>
                         <span class="font-medium truncate cursor-pointer hover:text-indigo-600"
                             @click="searchPrev('{{ addslashes($expense->vendor_name) }}')">
                             {{ $expense->vendor_name }}
@@ -159,7 +161,9 @@
                     </div>
                     <div class="text-sm text-gray-500">{{ $expense->memo }}</div>
                 </div>
-                <div class="text-right font-mono font-bold whitespace-nowrap">
+                <div class="text-right font-mono font-bold whitespace-nowrap cursor-pointer hover:bg-gray-200 px-2 rounded"
+                    @click="copyToClipboard('{{ $expense->amount }}')"
+                    title="クリックでコピー">
                     ¥{{ number_format($expense->amount) }}
                 </div>
                 <div class="w-28">
@@ -432,6 +436,20 @@ function expenseApp() {
             const data = await res.json();
             if (data.success) {
                 document.getElementById(`expense-${id}`).remove();
+            }
+        },
+
+        async copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                // 簡易トースト表示
+                const toast = document.createElement('div');
+                toast.textContent = 'コピーしました';
+                toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 1500);
+            } catch (e) {
+                alert('コピーに失敗しました');
             }
         },
     };
