@@ -39,11 +39,10 @@ class Entity extends Model
                 'end' => \Carbon\Carbon::create($year, 12, 31),
             ];
         } else {
-            // 例: 4月始まり（法人）: 前年4/1 〜 当年3/31
-            $startYear = $year - 1;
+            // 例: 4月始まり（法人）: 2025年度 → 2025/4/1 〜 2026/3/31
             return [
-                'start' => \Carbon\Carbon::create($startYear, $this->fiscal_year_start, 1),
-                'end' => \Carbon\Carbon::create($year, $this->fiscal_year_start, 1)->subDay(),
+                'start' => \Carbon\Carbon::create($year, $this->fiscal_year_start, 1),
+                'end' => \Carbon\Carbon::create($year + 1, $this->fiscal_year_start, 1)->subDay(),
             ];
         }
     }
