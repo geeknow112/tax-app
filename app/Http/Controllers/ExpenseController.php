@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountCategory;
+use App\Models\AllocationRate;
 use App\Models\Entity;
 use App\Models\Expense;
 use App\Models\FiscalYear;
@@ -17,6 +18,16 @@ class ExpenseController extends Controller
     private function currentEntityId(): ?int
     {
         return session('current_entity_id');
+    }
+
+    /**
+     * 按分率を取得（科目ID => 按分率のマップ）
+     */
+    private function getAllocationRates(int $entityId): array
+    {
+        return AllocationRate::where('entity_id', $entityId)
+            ->pluck('rate', 'account_category_id')
+            ->toArray();
     }
 
     /**
@@ -42,7 +53,10 @@ class ExpenseController extends Controller
         // 決算期間を取得
         $fiscalPeriod = $entity->getFiscalPeriod((int)$currentYear);
 
-        // 今年の経費（日付範囲でフィルタ）
+        // 現在の事業体の按分率を取得
+        $allocationRates = $this->getAllocationRates($entityId);
+
+        // 今年の経費（自事業体の経費）
         $query = Expense::where('entity_id', $entityId)
             ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
             ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
@@ -62,19 +76,87 @@ class ExpenseController extends Controller
             $query->where('vendor_name', 'like', "%{$search}%");
         }
 
+        // 自事業体の経費を取得
+        $ownExpenses = $query->get();
+
+        // 他事業体から按分される経費を取得
+        // 按分率が設定されている科目の経費で、他事業体に登録されているもの
+        $allocatedExpenses = collect();
+        if (!empty($allocationRates) && $filter !== 'unclassified') {
+            $categoryIds = array_keys($allocationRates);
+            $otherEntityIds = Entity::where('id', '!=', $entityId)->pluck('id');
+            
+            // 他事業体の決算期間も考慮（個人事業と法人で異なる可能性）
+            // ただし、按分経費は元の経費の日付で表示するため、現在の事業体の決算期間でフィルタ
+            $allocatedQuery = Expense::whereIn('entity_id', $otherEntityIds)
+                ->whereIn('account_category_id', $categoryIds)
+                ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
+                ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
+                ->with(['accountCategory', 'entity']);
+
+            if ($paymentMethod !== 'all') {
+                $allocatedQuery->where('payment_method', $paymentMethod);
+            }
+
+            if ($search) {
+                $allocatedQuery->where('vendor_name', 'like', "%{$search}%");
+            }
+
+            $allocatedExpenses = $allocatedQuery->get()->map(function ($expense) use ($allocationRates, $entityId) {
+                $rate = $allocationRates[$expense->account_category_id] ?? 0;
+                if ($rate > 0) {
+                    // 按分情報を追加
+                    $expense->is_allocated = true;
+                    $expense->allocation_rate = $rate;
+                    $expense->allocated_amount = round($expense->amount * $rate / 100);
+                    $expense->original_entity_id = $expense->entity_id;
+                    $expense->original_entity_name = $expense->entity->name;
+                    return $expense;
+                }
+                return null;
+            })->filter();
+        }
+
+        // 自事業体の経費に按分情報を追加
+        $ownExpenses = $ownExpenses->map(function ($expense) use ($allocationRates) {
+            $expense->is_allocated = false;
+            if ($expense->account_category_id && isset($allocationRates[$expense->account_category_id])) {
+                $rate = $allocationRates[$expense->account_category_id];
+                $expense->allocation_rate = $rate;
+                $expense->allocated_amount = round($expense->amount * $rate / 100);
+            } else {
+                $expense->allocation_rate = 100;
+                $expense->allocated_amount = $expense->amount;
+            }
+            return $expense;
+        });
+
+        // 経費を結合してソート
+        $allExpenses = $ownExpenses->concat($allocatedExpenses);
+
         // 事業年度開始月を考慮したソート
-        // 4月始まりの場合: 4月=1, 5月=2, ..., 3月=12 となるように変換
         $fiscalStart = $entity->fiscal_year_start;
         if ($fiscalStart === 1) {
-            // 1月始まり（個人事業）は通常の日付順
-            $expenses = $query->orderBy('date')->paginate(50);
+            $allExpenses = $allExpenses->sortBy('date');
         } else {
-            // 4月始まり等の法人は事業年度順
-            $expenses = $query
-                ->orderByRaw("CASE WHEN MONTH(date) >= ? THEN MONTH(date) - ? ELSE MONTH(date) + 12 - ? END", [$fiscalStart, $fiscalStart, $fiscalStart])
-                ->orderBy('date')
-                ->paginate(50);
+            $allExpenses = $allExpenses->sortBy(function ($expense) use ($fiscalStart) {
+                $month = $expense->date->month;
+                $sortMonth = $month >= $fiscalStart ? $month - $fiscalStart : $month + 12 - $fiscalStart;
+                return sprintf('%02d-%s', $sortMonth, $expense->date->format('Y-m-d'));
+            });
         }
+
+        // ページネーション（手動）
+        $page = $request->input('page', 1);
+        $perPage = 50;
+        $total = $allExpenses->count();
+        $expenses = new \Illuminate\Pagination\LengthAwarePaginator(
+            $allExpenses->forPage($page, $perPage)->values(),
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         // 去年の経費（参照用）
         $prevFiscalPeriod = $entity->getFiscalPeriod($currentYear - 1);
@@ -98,7 +180,7 @@ class ExpenseController extends Controller
         // 全事業体（事業体変更用）
         $allEntities = \App\Models\Entity::all();
 
-        // 集計
+        // 集計（自事業体の経費のみ）
         $totalCount = Expense::where('entity_id', $entityId)
             ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
             ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
@@ -108,29 +190,15 @@ class ExpenseController extends Controller
             ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'))
             ->whereNotNull('account_category_id')->count();
 
-        // 検索結果の集計（フィルタ適用後）
-        $filteredQuery = Expense::where('entity_id', $entityId)
-            ->whereDate('date', '>=', $fiscalPeriod['start']->format('Y-m-d'))
-            ->whereDate('date', '<=', $fiscalPeriod['end']->format('Y-m-d'));
-        if ($filter === 'unclassified') {
-            $filteredQuery->whereNull('account_category_id');
-        } elseif ($filter === 'classified') {
-            $filteredQuery->whereNotNull('account_category_id');
-        }
-        if ($paymentMethod !== 'all') {
-            $filteredQuery->where('payment_method', $paymentMethod);
-        }
-        if ($search) {
-            $filteredQuery->where('vendor_name', 'like', "%{$search}%");
-        }
-        $filteredCount = $filteredQuery->count();
-        $filteredSum = $filteredQuery->sum('amount');
+        // 検索結果の集計（按分後の金額で計算）
+        $filteredCount = $allExpenses->count();
+        $filteredSum = $allExpenses->sum('allocated_amount');
 
         return view('expenses.index', compact(
             'expenses', 'prevExpenses', 'categories', 'years',
             'currentYear', 'filter', 'search', 'paymentMethod',
             'totalCount', 'classifiedCount', 'allEntities',
-            'filteredCount', 'filteredSum'
+            'filteredCount', 'filteredSum', 'allocationRates'
         ));
     }
 
