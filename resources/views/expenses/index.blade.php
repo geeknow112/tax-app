@@ -155,13 +155,18 @@
 
             @forelse($expenses as $expense)
             <div class="bg-white rounded shadow p-3 flex items-center gap-3 hover:bg-gray-50 transition
-                {{ $expense->isClassified() ? 'border-l-4 border-green-400' : 'border-l-4 border-orange-400' }}"
+                {{ $expense->is_allocated ? 'border-l-4 border-purple-500 bg-purple-50' : ($expense->isClassified() ? 'border-l-4 border-green-400' : 'border-l-4 border-orange-400') }}"
                 :class="selectedIds.includes({{ $expense->id }}) ? 'ring-2 ring-indigo-400' : ''"
                 id="expense-{{ $expense->id }}">
+                @if($expense->is_allocated)
+                {{-- 按分経費は編集不可 --}}
+                <div class="w-4"></div>
+                @else
                 <input type="checkbox" value="{{ $expense->id }}"
                     :checked="selectedIds.includes({{ $expense->id }})"
                     @change="toggleSelect({{ $expense->id }})"
                     class="rounded">
+                @endif
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-gray-500 cursor-pointer hover:bg-gray-200 px-1 rounded"
@@ -175,14 +180,41 @@
                             {{ $expense->payment_method === 'credit_card' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700' }}">
                             {{ $expense->payment_method === 'credit_card' ? 'クレカ' : ($expense->payment_method === 'paypay' ? 'PayPay' : '現金') }}
                         </span>
+                        @if($expense->is_allocated)
+                        <span class="text-xs px-2 py-0.5 rounded bg-purple-200 text-purple-700">
+                            按分 {{ $expense->allocation_rate }}% ({{ $expense->original_entity_name }}より)
+                        </span>
+                        @endif
                     </div>
                     <div class="text-sm text-gray-500">{{ $expense->memo }}</div>
                 </div>
-                <div class="text-right font-mono font-bold whitespace-nowrap cursor-pointer hover:bg-gray-200 px-2 rounded"
-                    @click="copyToClipboard('{{ $expense->amount }}')"
-                    title="クリックでコピー">
-                    ¥{{ number_format($expense->amount) }}
+                <div class="text-right font-mono font-bold whitespace-nowrap px-2 rounded {{ $expense->is_allocated ? 'text-purple-700' : '' }}">
+                    @if($expense->is_allocated)
+                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                        @click="copyToClipboard('{{ $expense->allocated_amount }}')"
+                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</span>
+                    <span class="text-gray-400 line-through text-xs relative -top-1 ml-1">¥{{ number_format($expense->amount) }}</span>
+                    @elseif(isset($expense->allocation_rate) && $expense->allocation_rate < 100)
+                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                        @click="copyToClipboard('{{ $expense->allocated_amount }}')"
+                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</span>
+                    <span class="text-gray-400 line-through text-xs relative -top-1 ml-1">¥{{ number_format($expense->amount) }}</span>
+                    @else
+                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                        @click="copyToClipboard('{{ $expense->amount }}')"
+                        title="クリックでコピー">¥{{ number_format($expense->amount) }}</span>
+                    @endif
                 </div>
+                @if($expense->is_allocated)
+                {{-- 按分経費は事業体変更不可 --}}
+                <div class="w-28 text-xs text-purple-600 text-center">
+                    {{ $expense->original_entity_name }}
+                </div>
+                <div class="w-44 text-sm text-purple-600">
+                    {{ $expense->accountCategory?->name ?? '未仕訳' }}
+                </div>
+                <div class="w-8"></div>
+                @else
                 <div class="w-28">
                     <select class="border rounded px-2 py-1 w-full text-xs
                         {{ $expense->entity_id == ($currentEntity->id ?? null) ? 'bg-gray-100' : 'bg-yellow-100 border-yellow-400' }}"
@@ -214,6 +246,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                 </button>
+                @endif
             </div>
             @empty
             <div class="bg-white rounded shadow p-8 text-center text-gray-500">
