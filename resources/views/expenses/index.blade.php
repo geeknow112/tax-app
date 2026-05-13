@@ -169,9 +169,9 @@
                 @endif
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500 cursor-pointer hover:bg-gray-200 px-1 rounded"
+                        <button class="text-sm text-gray-500 hover:bg-gray-200 px-1 rounded"
                             @click="copyToClipboard('{{ $expense->date->format('Y/m/d') }}')"
-                            title="クリックでコピー">{{ $expense->date->format('Y/m/d') }}</span>
+                            title="クリックでコピー">{{ $expense->date->format('Y/m/d') }}</button>
                         <span class="font-medium truncate cursor-pointer hover:text-indigo-600"
                             @click="searchPrev('{{ addslashes($expense->vendor_name) }}')">
                             {{ $expense->vendor_name }}
@@ -190,19 +190,19 @@
                 </div>
                 <div class="text-right font-mono font-bold whitespace-nowrap px-2 rounded {{ $expense->is_allocated ? 'text-purple-700' : '' }}">
                     @if($expense->is_allocated)
-                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                    <button class="cursor-pointer hover:bg-gray-200 rounded px-1"
                         @click="copyToClipboard('{{ $expense->allocated_amount }}')"
-                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</span>
+                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</button>
                     <span class="text-gray-400 line-through text-xs relative -top-1 ml-1">¥{{ number_format($expense->amount) }}</span>
                     @elseif(isset($expense->allocation_rate) && $expense->allocation_rate < 100)
-                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                    <button class="cursor-pointer hover:bg-gray-200 rounded px-1"
                         @click="copyToClipboard('{{ $expense->allocated_amount }}')"
-                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</span>
+                        title="クリックでコピー">¥{{ number_format($expense->allocated_amount) }}</button>
                     <span class="text-gray-400 line-through text-xs relative -top-1 ml-1">¥{{ number_format($expense->amount) }}</span>
                     @else
-                    <span class="cursor-pointer hover:bg-gray-200 rounded px-1"
+                    <button class="cursor-pointer hover:bg-gray-200 rounded px-1"
                         @click="copyToClipboard('{{ $expense->amount }}')"
-                        title="クリックでコピー">¥{{ number_format($expense->amount) }}</span>
+                        title="クリックでコピー">¥{{ number_format($expense->amount) }}</button>
                     @endif
                 </div>
                 @if($expense->is_allocated)
