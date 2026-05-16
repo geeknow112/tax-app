@@ -41,6 +41,7 @@ class ExpenseController extends Controller
         $filter = $request->input('filter', 'all'); // all, unclassified, classified
         $search = $request->input('search', '');
         $paymentMethod = $request->input('payment_method', 'all'); // all, credit_card, cash, paypay
+        $searchCategoryId = $request->input('account_category_id', 'all'); // all or category id
 
         $fiscalYear = FiscalYear::firstOrCreate(
             ['year' => $currentYear, 'entity_id' => $entityId],
@@ -76,6 +77,10 @@ class ExpenseController extends Controller
             $query->where('vendor_name', 'like', "%{$search}%");
         }
 
+        if ($searchCategoryId !== 'all') {
+            $query->where('account_category_id', $searchCategoryId);
+        }
+
         // 自事業体の経費を取得
         $ownExpenses = $query->get();
 
@@ -100,6 +105,10 @@ class ExpenseController extends Controller
 
             if ($search) {
                 $allocatedQuery->where('vendor_name', 'like', "%{$search}%");
+            }
+
+            if ($searchCategoryId !== 'all') {
+                $allocatedQuery->where('account_category_id', $searchCategoryId);
             }
 
             $allocatedExpenses = $allocatedQuery->get()->map(function ($expense) use ($allocationRates, $entityId) {
@@ -170,9 +179,7 @@ class ExpenseController extends Controller
         }
         $prevExpenses = $prevQuery->orderBy('date')->get();
 
-        $categories = AccountCategory::where(function($q) use ($entityId) {
-            $q->where('entity_id', $entityId)->orWhereNull('entity_id');
-        })->orderBy('sort_order')->get();
+        $categories = AccountCategory::orderBy('sort_order')->get();
         
         $years = FiscalYear::where('entity_id', $entityId)
             ->orderBy('year', 'desc')->pluck('year');
@@ -196,7 +203,7 @@ class ExpenseController extends Controller
 
         return view('expenses.index', compact(
             'expenses', 'prevExpenses', 'categories', 'years',
-            'currentYear', 'filter', 'search', 'paymentMethod',
+            'currentYear', 'filter', 'search', 'paymentMethod', 'searchCategoryId',
             'totalCount', 'classifiedCount', 'allEntities',
             'filteredCount', 'filteredSum', 'allocationRates'
         ));

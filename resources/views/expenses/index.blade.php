@@ -30,6 +30,15 @@
                     <option value="paypay" {{ $paymentMethod === 'paypay' ? 'selected' : '' }}>PayPay</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm text-gray-600">勘定科目</label>
+                <select name="account_category_id" class="border rounded px-3 py-2" onchange="this.form.submit()">
+                    <option value="all" {{ $searchCategoryId === 'all' ? 'selected' : '' }}>すべて</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ $searchCategoryId == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="flex-1">
                 <label class="block text-sm text-gray-600">利用場所で検索</label>
                 <input type="text" name="search" value="{{ $search }}" placeholder="利用場所を入力..."
@@ -52,7 +61,7 @@
     </div>
 
     {{-- 検索結果の集計 --}}
-    @if($search || $filter !== 'all' || $paymentMethod !== 'all')
+    @if($search || $filter !== 'all' || $paymentMethod !== 'all' || $searchCategoryId !== 'all')
     <div class="bg-blue-50 border border-blue-200 rounded shadow p-4 flex items-center justify-between">
         <div class="flex items-center gap-4">
             <span class="text-blue-700 font-medium">検索結果</span>
