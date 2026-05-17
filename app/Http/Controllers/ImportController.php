@@ -27,28 +27,49 @@ class ImportController extends Controller
             'type' => 'required|in:credit_card,cash',
         ]);
 
-        $fiscalYear = FiscalYear::firstOrCreate(['year' => $request->year]);
+        $entityId = session('current_entity_id');
+        $fiscalYear = FiscalYear::firstOrCreate(
+            ['year' => $request->year, 'entity_id' => $entityId],
+            ['entity_id' => $entityId]
+        );
         $file = $request->file('file');
         $spreadsheet = IOFactory::load($file->getPathname());
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        $imported = 0;
         $categoryMap = AccountCategory::pluck('id', 'name')->toArray();
 
         if ($request->type === 'credit_card') {
-            $imported = $this->importCreditCard($rows, $fiscalYear, $categoryMap);
+            $result = $this->importCreditCard($rows, $fiscalYear, $categoryMap, $entityId);
         } else {
-            $imported = $this->importCash($rows, $fiscalYear, $categoryMap);
+            $result = $this->importCash($rows, $fiscalYear, $categoryMap, $entityId);
+        }
+
+        $message = "{$result['imported']}件インポートしました（{$request->year}年 / {$request->type}）";
+        if ($result['skipped'] > 0) {
+            $message .= " ※{$result['skipped']}件は重複のためスキップしました";
         }
 
         return redirect()->route('import.show')
-            ->with('success', "{$imported}件インポートしました（{$request->year}年 / {$request->type}）");
+            ->with('success', $message);
     }
 
-    private function importCreditCard(array $rows, FiscalYear $fiscalYear, array $categoryMap): int
+    /**
+     * 重複チェック
+     */
+    private function isDuplicate(int $entityId, string $date, string $vendorName, int $amount): bool
+    {
+        return Expense::where('entity_id', $entityId)
+            ->where('date', $date)
+            ->where('vendor_name', $vendorName)
+            ->where('amount', $amount)
+            ->exists();
+    }
+
+    private function importCreditCard(array $rows, FiscalYear $fiscalYear, array $categoryMap, int $entityId): array
     {
         $imported = 0;
+        $skipped = 0;
         foreach ($rows as $i => $row) {
             if ($i < 2) continue; // ヘッダー2行スキップ
             if (empty($row[1])) continue; // 日付なし→スキップ
@@ -57,14 +78,21 @@ class ImportController extends Controller
             if (!$date) continue;
 
             $vendorName = trim($row[2] ?? '');
-            $amount = abs(intval($row[4] ?? 0));
+            $amount = intval(str_replace(',', '', $row[4] ?? 0));
             if (!$vendorName || $amount === 0) continue;
+
+            // 重複チェック
+            if ($this->isDuplicate($entityId, $date, $vendorName, $amount)) {
+                $skipped++;
+                continue;
+            }
 
             // 科目列（I列=index 8）
             $categoryName = trim($row[8] ?? '');
             $categoryId = $categoryMap[$categoryName] ?? null;
 
             Expense::create([
+                'entity_id' => $entityId,
                 'fiscal_year_id' => $fiscalYear->id,
                 'date' => $date,
                 'vendor_name' => $vendorName,
@@ -76,12 +104,13 @@ class ImportController extends Controller
             ]);
             $imported++;
         }
-        return $imported;
+        return ['imported' => $imported, 'skipped' => $skipped];
     }
 
-    private function importCash(array $rows, FiscalYear $fiscalYear, array $categoryMap): int
+    private function importCash(array $rows, FiscalYear $fiscalYear, array $categoryMap, int $entityId): array
     {
         $imported = 0;
+        $skipped = 0;
         foreach ($rows as $i => $row) {
             if ($i < 2) continue;
             if (empty($row[1])) continue;
@@ -90,15 +119,22 @@ class ImportController extends Controller
             if (!$date) continue;
 
             $vendorName = trim($row[2] ?? '') ?: trim($row[3] ?? '');
-            $amount = abs(intval($row[4] ?? 0));
+            $amount = intval(str_replace(',', '', $row[4] ?? 0));
             if (!$vendorName || $amount === 0) continue;
+
+            $paymentMethod = str_contains(strtolower($row[2] ?? ''), 'paypay') ? 'paypay' : 'cash';
+
+            // 重複チェック
+            if ($this->isDuplicate($entityId, $date, $vendorName, $amount)) {
+                $skipped++;
+                continue;
+            }
 
             $categoryName = trim($row[8] ?? '');
             $categoryId = $categoryMap[$categoryName] ?? null;
 
-            $paymentMethod = str_contains(strtolower($row[2] ?? ''), 'paypay') ? 'paypay' : 'cash';
-
             Expense::create([
+                'entity_id' => $entityId,
                 'fiscal_year_id' => $fiscalYear->id,
                 'date' => $date,
                 'vendor_name' => $vendorName,
@@ -110,7 +146,7 @@ class ImportController extends Controller
             ]);
             $imported++;
         }
-        return $imported;
+        return ['imported' => $imported, 'skipped' => $skipped];
     }
 
     private function parseDate($value): ?string
