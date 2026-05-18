@@ -126,7 +126,12 @@
 
                         @if($depreciationTotal > 0)
                         <tr class="border-t hover:bg-gray-50 bg-purple-50">
-                            <td class="px-4 py-2 text-purple-700">減価償却費</td>
+                            <td class="px-4 py-2 text-purple-700">
+                                減価償却費
+                                @if($depreciationRate < 100)
+                                <span class="text-xs text-purple-500 ml-1">({{ $depreciationRate }}%)</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-2" colspan="{{ $totalByMethod['paypay'] > 0 ? 3 : 2 }}"></td>
                             <td class="px-4 py-2 text-right"><button onclick="copyVal('{{ $depreciationTotal }}')" class="font-mono font-bold text-purple-700 hover:bg-purple-100 px-1 rounded cursor-pointer">¥{{ number_format($depreciationTotal) }}</button></td>
                         </tr>

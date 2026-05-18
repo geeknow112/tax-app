@@ -14,7 +14,13 @@
         </form>
         <div class="ml-auto text-sm">
             <span class="text-gray-600">当年償却額合計:</span>
+            @if($depreciationRate < 100)
+            <span class="font-mono font-bold text-purple-700">¥{{ number_format($totalDepreciationAllocated) }}</span>
+            <span class="text-gray-400 line-through text-xs ml-1">¥{{ number_format($totalDepreciation) }}</span>
+            <span class="text-xs text-purple-500 ml-1">({{ $depreciationRate }}%)</span>
+            @else
             <span class="font-mono font-bold text-purple-700">¥{{ number_format($totalDepreciation) }}</span>
+            @endif
             <span class="text-gray-400 mx-2">|</span>
             <span class="text-gray-600">期末帳簿価額合計:</span>
             <span class="font-mono font-bold">¥{{ number_format($totalBookValue) }}</span>
@@ -43,19 +49,35 @@
                     </thead>
                     <tbody>
                         @forelse($depreciations as $dep)
-                        <tr class="border-t hover:bg-gray-50">
-                            <td class="px-3 py-2">{{ $dep->asset_name }}</td>
+                        <tr class="border-t hover:bg-gray-50 {{ $dep->is_allocated ? 'bg-purple-50' : '' }}">
+                            <td class="px-3 py-2">
+                                {{ $dep->asset_name }}
+                                @if($dep->is_allocated)
+                                <span class="text-xs px-2 py-0.5 rounded bg-purple-200 text-purple-700 ml-1">
+                                    {{ $dep->allocation_rate }}% ({{ $dep->original_entity_name }}より)
+                                </span>
+                                @endif
+                            </td>
                             <td class="px-3 py-2 text-sm">{{ $dep->acquisition_date->format('Y/m/d') }}</td>
                             <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->acquisition_cost }}')" class="font-mono text-sm hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->acquisition_cost) }}</button></td>
                             <td class="px-3 py-2 text-center text-sm">{{ $dep->useful_life }}年</td>
-                            <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->depreciation_amount }}')" class="font-mono font-bold text-purple-700 hover:bg-purple-50 px-1 rounded cursor-pointer">¥{{ number_format($dep->depreciation_amount) }}</button></td>
+                            <td class="px-3 py-2 text-right">
+                                @if($depreciationRate < 100)
+                                <button onclick="copyVal('{{ $dep->allocated_amount }}')" class="font-mono font-bold text-purple-700 hover:bg-purple-50 px-1 rounded cursor-pointer">¥{{ number_format($dep->allocated_amount) }}</button>
+                                <span class="text-gray-400 line-through text-xs ml-1">¥{{ number_format($dep->depreciation_amount) }}</span>
+                                @else
+                                <button onclick="copyVal('{{ $dep->depreciation_amount }}')" class="font-mono font-bold text-purple-700 hover:bg-purple-50 px-1 rounded cursor-pointer">¥{{ number_format($dep->depreciation_amount) }}</button>
+                                @endif
+                            </td>
                             <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->accumulated_depreciation }}')" class="font-mono text-sm text-gray-500 hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->accumulated_depreciation) }}</button></td>
                             <td class="px-3 py-2 text-right"><button onclick="copyVal('{{ $dep->book_value }}')" class="font-mono text-sm hover:bg-gray-100 px-1 rounded cursor-pointer">¥{{ number_format($dep->book_value) }}</button></td>
                             <td class="px-3 py-2">
+                                @if(!$dep->is_allocated)
                                 <form method="POST" action="{{ route('depreciations.destroy', $dep) }}" onsubmit="return confirm('削除しますか？')">
                                     @csrf @method('DELETE')
                                     <button class="text-red-400 hover:text-red-600 text-sm">削除</button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -67,7 +89,15 @@
                     <tfoot class="bg-gray-100 font-bold">
                         <tr class="border-t-2">
                             <td colspan="4" class="px-3 py-3">合計</td>
-                            <td class="px-3 py-3 text-right font-mono text-purple-700">¥{{ number_format($totalDepreciation) }}</td>
+                            <td class="px-3 py-3 text-right font-mono text-purple-700">
+                                @if($depreciationRate < 100)
+                                ¥{{ number_format($totalDepreciationAllocated) }}
+                                <span class="text-gray-400 line-through text-xs font-normal ml-1">¥{{ number_format($totalDepreciation) }}</span>
+                                <span class="text-xs text-purple-500 font-normal ml-1">({{ $depreciationRate }}%)</span>
+                                @else
+                                ¥{{ number_format($totalDepreciation) }}
+                                @endif
+                            </td>
                             <td colspan="3"></td>
                         </tr>
                     </tfoot>
