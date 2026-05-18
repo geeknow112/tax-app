@@ -135,10 +135,18 @@ class ProfitLossController extends Controller
             $totalByMethod['paypay'] += $paypay;
         }
 
-        // === 減価償却費 ===
-        $depreciationTotal = Depreciation::where('fiscal_year_id', $fiscalYear->id)
+        // === 減価償却費（按分適用） ===
+        $depreciationRaw = Depreciation::where('fiscal_year_id', $fiscalYear->id)
             ->where('entity_id', $entityId)
             ->sum('depreciation_amount');
+        
+        // 減価償却費の科目IDを取得して按分率を適用
+        $depreciationCategory = AccountCategory::where('name', '減価償却費')->first();
+        $depreciationRate = 100;
+        if ($depreciationCategory && isset($allocationRates[$depreciationCategory->id])) {
+            $depreciationRate = $allocationRates[$depreciationCategory->id];
+        }
+        $depreciationTotal = (int) round($depreciationRaw * $depreciationRate / 100);
 
         // === 月別経費集計（按分率適用） ===
         $expenseByMonthAndCategory = Expense::where('fiscal_year_id', $fiscalYear->id)
@@ -175,7 +183,8 @@ class ProfitLossController extends Controller
             'currentYear', 'years', 'plItems', 'expenseTotal',
             'unclassifiedTotal', 'monthly', 'totalCount', 'classifiedCount',
             'totalByMethod', 'revenueTotal', 'otherIncomeTotal',
-            'depreciationTotal', 'grossProfit', 'netIncome',
+            'depreciationTotal', 'depreciationRaw', 'depreciationRate',
+            'grossProfit', 'netIncome',
             'monthlyRevenue', 'fiscalMonthOrder', 'entity'
         ));
     }

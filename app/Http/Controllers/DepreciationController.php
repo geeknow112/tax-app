@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountCategory;
+use App\Models\AllocationRate;
 use App\Models\Depreciation;
+use App\Models\Entity;
 use App\Models\FiscalYear;
 use Illuminate\Http\Request;
 
@@ -16,6 +19,23 @@ class DepreciationController extends Controller
         return session('current_entity_id');
     }
 
+    /**
+     * 減価償却費の按分率を取得
+     */
+    private function getDepreciationRate(int $entityId): float
+    {
+        $category = AccountCategory::where('name', '減価償却費')->first();
+        if (!$category) {
+            return 100;
+        }
+        
+        $rate = AllocationRate::where('account_category_id', $category->id)
+            ->where('entity_id', $entityId)
+            ->value('rate');
+        
+        return $rate ?? 100;
+    }
+
     public function index(Request $request)
     {
         $entityId = $this->currentEntityId();
@@ -26,20 +46,38 @@ class DepreciationController extends Controller
             ['entity_id' => $entityId]
         );
         
-        $years = FiscalYear::where('entity_id', $entityId)
-            ->orderBy('year', 'desc')->pluck('year');
+        // 全事業体の年度を取得
+        $allYears = FiscalYear::orderBy('year', 'desc')->pluck('year')->unique();
+        $years = $allYears->isNotEmpty() ? $allYears : collect([$currentYear]);
 
-        $depreciations = Depreciation::where('fiscal_year_id', $fiscalYear->id)
-            ->where('entity_id', $entityId)
+        // 按分率を取得
+        $depreciationRate = $this->getDepreciationRate($entityId);
+
+        // 全事業体の減価償却データを取得（同じ年度）
+        $allFiscalYearIds = FiscalYear::where('year', $currentYear)->pluck('id');
+        
+        $allDepreciations = Depreciation::whereIn('fiscal_year_id', $allFiscalYearIds)
+            ->with('entity')
             ->orderBy('acquisition_date')
             ->get();
 
+        // 按分情報を追加
+        $depreciations = $allDepreciations->map(function ($dep) use ($entityId, $depreciationRate) {
+            $dep->is_allocated = ($dep->entity_id !== $entityId);
+            $dep->allocation_rate = $depreciationRate;
+            $dep->allocated_amount = (int) round($dep->depreciation_amount * $depreciationRate / 100);
+            $dep->original_entity_name = $dep->entity->name ?? '';
+            return $dep;
+        });
+
         $totalDepreciation = $depreciations->sum('depreciation_amount');
         $totalBookValue = $depreciations->sum('book_value');
+        $totalDepreciationAllocated = $depreciations->sum('allocated_amount');
 
         return view('depreciations.index', compact(
             'depreciations', 'years', 'currentYear',
-            'totalDepreciation', 'totalBookValue'
+            'totalDepreciation', 'totalBookValue',
+            'depreciationRate', 'totalDepreciationAllocated'
         ));
     }
 
